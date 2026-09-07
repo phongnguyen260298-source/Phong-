@@ -1,4 +1,4 @@
-name: GPR DIO VNStock extraction
+name: GPR DIO VNStock Bronze extraction
 
 on:
   push:
@@ -6,6 +6,10 @@ on:
       - 'scripts/gpr_dio_vnstock.py'
       - '.github/workflows/gpr-dio-vnstock.yml'
   workflow_dispatch:
+
+concurrency:
+  group: gpr-dio-vnstock-bronze
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -40,29 +44,26 @@ jobs:
           chmod +x installer.run
           ./installer.run -- --non-interactive --api-key "$VNSTOCK_API_KEY" --venv-path "$VENV_PATH" --language en
 
-          # The VNStock installer creates a uv-managed environment that may not
-          # include pip. Bootstrap pip before installing output dependencies.
+          # Installer uses a uv-managed environment. Bootstrap pip without
+          # replacing VNStock-compatible numpy/pandas with incompatible majors.
           "$VENV_PATH/bin/python" -m ensurepip --upgrade
-          "$VENV_PATH/bin/python" -m pip install --upgrade pip pandas numpy pyarrow openpyxl
+          "$VENV_PATH/bin/python" -m pip install --upgrade \
+            'pip<27' 'pandas>=2.0,<3' 'numpy>=1.24,<2.3' pyarrow openpyxl
 
           "$VENV_PATH/bin/python" - <<'PY'
-          import vnstock_data
-          from vnstock_data import Fundamental
-          print('vnstock_data import OK')
-          print('Fundamental:', Fundamental)
-
-          # Bronze entitlement smoke test: confirm quarterly history is no longer
-          # constrained to Community's latest 8 periods.
-          eq = Fundamental().equity('HPG')
-          bs = eq.balance_sheet(period='quarter', format='long', drop_empty=False, com_type='Regular')
-          print('HPG balance_sheet columns:', list(bs.columns))
-          if 'period' in bs.columns:
-              periods = sorted(bs['period'].dropna().astype(str).unique())
-              print('HPG quarterly periods returned:', len(periods))
-              print('HPG first/last periods:', periods[:3], periods[-3:])
+          from vnstock_data import Finance
+          import pandas as pd
+          import numpy as np
+          print('Bronze vnstock_data import OK')
+          print('pandas=', pd.__version__, 'numpy=', np.__version__)
+          f = Finance(source='VCI', symbol='HPG')
+          bs = f.balance_sheet(period='quarter', lang='vi', drop_empty=False, com_type='Regular', format='long')
+          periods = sorted(bs['period'].dropna().astype(str).unique()) if 'period' in bs.columns else []
+          print('HPG VCI quarterly periods returned:', len(periods))
+          print('HPG VCI first/last:', periods[:3], periods[-3:])
           PY
 
-      - name: Extract 42-company quarterly financial dataset
+      - name: Extract Bronze research dataset
         shell: bash
         run: |
           VENV_PATH="$RUNNER_TEMP/vnstock-venv"
@@ -80,7 +81,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: gpr-dio-vnstock-data
+          name: gpr-dio-vnstock-bronze
           path: output/
           if-no-files-found: warn
           retention-days: 30
