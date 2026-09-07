@@ -28,6 +28,23 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install --upgrade 'vnstock>=4.0.7' 'vnai>=2.5.9' pandas numpy pyarrow openpyxl
 
+      - name: Apply pandas Period compatibility patch
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('scripts/gpr_dio_vnstock_community.py')
+          s = p.read_text(encoding='utf-8')
+          old = "prev_q = panel.groupby('Symbol')['QuarterP'].shift(1)\nconsecutive = (panel['QuarterP'].astype('int64') - prev_q.astype('Int64')) == 1"
+          new = "qparts = panel['Quarter'].str.extract(r'(?P<year>20\\d{2})-Q(?P<quarter>[1-4])').astype(int)\npanel['_q_index'] = qparts['year'] * 4 + qparts['quarter']\nprev_q_index = panel.groupby('Symbol')['_q_index'].shift(1)\nconsecutive = (panel['_q_index'] - prev_q_index).eq(1)"
+          if old not in s:
+              raise SystemExit('Expected compatibility target not found')
+          s = s.replace(old, new)
+          marker = "panel['AvgInventory'] = (panel['Inventory_End'] + panel['Inventory_Lag'])/2"
+          s = s.replace(marker, "panel.drop(columns=['_q_index'], inplace=True)\n\n" + marker)
+          p.write_text(s, encoding='utf-8')
+          print('Applied Period compatibility patch')
+          PY
+
       - name: Extract 42-company Community dataset
         run: |
           python scripts/gpr_dio_vnstock_community.py
