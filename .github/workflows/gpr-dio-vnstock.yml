@@ -27,25 +27,39 @@ jobs:
         shell: bash
         run: |
           if [ -z "$VNSTOCK_API_KEY" ]; then
-            echo "::error::Repository secret VNSTOCK_API_KEY is not configured. Add it in Settings > Secrets and variables > Actions."
+            echo "::error::Repository secret VNSTOCK_API_KEY is not configured."
             exit 2
           fi
 
-      - name: Install VNStock sponsor libraries
+      - name: Install VNStock Bronze libraries
         shell: bash
         run: |
           VENV_PATH="$RUNNER_TEMP/vnstock-venv"
-          python -m pip install --upgrade pip
-          python -m pip install --upgrade requests setuptools wheel
+          python -m pip install --upgrade pip requests setuptools wheel
           wget -q https://vnstocks.com/files/vnstock-cli-installer.run -O installer.run
           chmod +x installer.run
           ./installer.run -- --non-interactive --api-key "$VNSTOCK_API_KEY" --venv-path "$VENV_PATH" --language en
-          "$VENV_PATH/bin/python" -m pip install --upgrade pandas numpy pyarrow openpyxl
+
+          # The VNStock installer creates a uv-managed environment that may not
+          # include pip. Bootstrap pip before installing output dependencies.
+          "$VENV_PATH/bin/python" -m ensurepip --upgrade
+          "$VENV_PATH/bin/python" -m pip install --upgrade pip pandas numpy pyarrow openpyxl
+
           "$VENV_PATH/bin/python" - <<'PY'
           import vnstock_data
           from vnstock_data import Fundamental
           print('vnstock_data import OK')
-          print(Fundamental)
+          print('Fundamental:', Fundamental)
+
+          # Bronze entitlement smoke test: confirm quarterly history is no longer
+          # constrained to Community's latest 8 periods.
+          eq = Fundamental().equity('HPG')
+          bs = eq.balance_sheet(period='quarter', format='long', drop_empty=False, com_type='Regular')
+          print('HPG balance_sheet columns:', list(bs.columns))
+          if 'period' in bs.columns:
+              periods = sorted(bs['period'].dropna().astype(str).unique())
+              print('HPG quarterly periods returned:', len(periods))
+              print('HPG first/last periods:', periods[:3], periods[-3:])
           PY
 
       - name: Extract 42-company quarterly financial dataset
