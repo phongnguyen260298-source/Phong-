@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: vnstock-chatgpt
+    runtime: docker
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: VNSTOCK_API_KEY
+        sync: false
+      - key: VNSTOCK_SERVER_TOKEN
+        sync: false
