@@ -1,0 +1,609 @@
+name: GPR DIO FAST Bronze
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    env:
+      VNSTOCK_API_KEY: ${{ secrets.VNSTOCK_API_KEY }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Check API key
+        shell: bash
+        run: |
+          if [ -z "$VNSTOCK_API_KEY" ]; then
+            echo "::error::VNSTOCK_API_KEY secret is missing"
+            exit 2
+          fi
+
+      - name: Install VNStock Bronze
+        shell: bash
+        run: |
+          set -e
+
+          VENV_PATH="$RUNNER_TEMP/vnstock-venv"
+
+          python -m pip install --upgrade pip requests setuptools wheel
+
+          wget -q \
+            https://vnstocks.com/files/vnstock-cli-installer.run \
+            -O installer.run
+
+          chmod +x installer.run
+
+          ./installer.run -- \
+            --non-interactive \
+            --api-key "$VNSTOCK_API_KEY" \
+            --venv-path "$VENV_PATH" \
+            --language en
+
+          "$VENV_PATH/bin/python" -m ensurepip --upgrade
+
+          # Giữ đúng dependency range tương thích VNStock
+          "$VENV_PATH/bin/python" -m pip install \
+            "pandas>=2.2,<3" \
+            "numpy>=2.0,<2.3" \
+            pyarrow \
+            openpyxl
+
+          "$VENV_PATH/bin/python" - <<'PY'
+          from vnstock_data import Finance
+          print("VNStock Bronze import OK")
+          print(Finance)
+          PY
+
+      - name: Extract financial statements
+        shell: bash
+        run: |
+          VENV_PATH="$RUNNER_TEMP/vnstock-venv"
+
+          cat > /tmp/extract.py <<'PY'
+
+          import json
+          import re
+          import time
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          import pandas as pd
+          from vnstock_data import Finance
+
+
+          # ==========================================================
+          # CONFIG
+          # ==========================================================
+
+          OUT = Path("output")
+          OUT.mkdir(exist_ok=True)
+
+          UNIVERSE = {
+              "STEEL": [
+                  "DTL","HMC","HPG","HSG","NKG","SMC",
+                  "TLH","VCA","KMT","SSM","VGS"
+              ],
+              "FERTILIZER": [
+                  "BFC","DCM","DPM","SFG","DDV","LAS"
+              ],
+              "TEXTILE": [
+                  "AAT","ADS","EVE","GIL","GMC","HTG",
+                  "KMR","MSH","STK","SVD","TCM","TVT",
+                  "TDT","TET","TNG"
+              ],
+              "SEAFOOD": [
+                  "AAM","ABT","ACL","ANV","CMX",
+                  "FMC","IDI","KHS","SJ1","VHC"
+              ],
+          }
+
+          INDUSTRY = {
+              symbol: industry
+              for industry, symbols in UNIVERSE.items()
+              for symbol in symbols
+          }
+
+          SYMBOLS = list(INDUSTRY)
+
+          BS_START = pd.Period("2019Q4", freq="Q")
+          IS_START = pd.Period("2019Q1", freq="Q")
+          END = pd.Period("2025Q4", freq="Q")
+
+
+          # ==========================================================
+          # HELPERS
+          # ==========================================================
+
+          def quarter(x):
+              if pd.isna(x):
+                  return None
+
+              s = str(x).upper().strip()
+
+              m = re.search(r"(20\d{2})\D*Q([1-4])", s)
+
+              if m:
+                  return pd.Period(
+                      f"{m.group(1)}Q{m.group(2)}",
+                      freq="Q"
+                  )
+
+              m = re.search(r"Q([1-4])\D*(20\d{2})", s)
+
+              if m:
+                  return pd.Period(
+                      f"{m.group(2)}Q{m.group(1)}",
+                      freq="Q"
+                  )
+
+              return None
+
+
+          def call_report(symbol, report):
+
+              finance = Finance(
+                  source="VCI",
+                  symbol=symbol
+              )
+
+              fn = getattr(finance, report)
+
+              attempts = [
+                  {
+                      "period": "quarter",
+                      "lang": "vi",
+                      "drop_empty": False,
+                      "com_type": "Regular",
+                      "format": "long",
+                  },
+                  {
+                      "period": "quarter",
+                      "drop_empty": False,
+                      "com_type": "Regular",
+                      "format": "long",
+                  },
+                  {
+                      "period": "quarter",
+                      "drop_empty": False,
+                      "format": "long",
+                  },
+              ]
+
+              last_error = None
+
+              for kwargs in attempts:
+                  try:
+                      return fn(**kwargs)
+                  except TypeError as e:
+                      last_error = e
+
+              raise last_error
+
+
+          def fetch(symbol, report, max_attempts=4):
+
+              for attempt in range(1, max_attempts + 1):
+
+                  try:
+                      df = call_report(symbol, report)
+
+                      if df is None or df.empty:
+                          raise RuntimeError("Empty dataframe")
+
+                      return df.copy()
+
+                  except Exception as e:
+
+                      print(
+                          f"[retry] {symbol} "
+                          f"{report} "
+                          f"{attempt}/{max_attempts}: "
+                          f"{type(e).__name__}: {e}",
+                          flush=True
+                      )
+
+                      if attempt == max_attempts:
+                          raise
+
+                      time.sleep(min(8, 2 ** attempt))
+
+
+          # ==========================================================
+          # EXTRACTION
+          # ==========================================================
+
+          raw_frames = []
+          errors = []
+          coverage = []
+
+          for i, symbol in enumerate(SYMBOLS, 1):
+
+              print(
+                  f"\n[{i}/{len(SYMBOLS)}] {symbol}",
+                  flush=True
+              )
+
+              ticker_periods = {}
+
+              for report in [
+                  "balance_sheet",
+                  "income_statement"
+              ]:
+
+                  try:
+
+                      df = fetch(symbol, report)
+
+                      print(
+                          f"  {report}: "
+                          f"{len(df):,} rows",
+                          flush=True
+                      )
+
+                      # Normalize known VNStock long-form schemas
+                      rename = {}
+
+                      if "item_id" in df.columns:
+                          rename["item_id"] = "id"
+
+                      if "item" in df.columns:
+                          rename["item"] = "name"
+
+                      df = df.rename(columns=rename)
+
+                      required = {
+                          "period",
+                          "id",
+                          "name",
+                          "value"
+                      }
+
+                      missing = (
+                          required
+                          - set(df.columns)
+                      )
+
+                      if missing:
+                          raise RuntimeError(
+                              "Unexpected schema. "
+                              f"Missing={missing}; "
+                              f"columns={list(df.columns)}"
+                          )
+
+                      df["symbol"] = symbol
+                      df["industry"] = INDUSTRY[symbol]
+                      df["report"] = report
+                      df["source"] = "VCI"
+                      df["retrieval_utc"] = (
+                          datetime.now(timezone.utc)
+                          .isoformat()
+                      )
+
+                      df["Quarter"] = (
+                          df["period"]
+                          .map(quarter)
+                      )
+
+                      start = (
+                          BS_START
+                          if report == "balance_sheet"
+                          else IS_START
+                      )
+
+                      df = df[
+                          df["Quarter"].notna()
+                          & (df["Quarter"] >= start)
+                          & (df["Quarter"] <= END)
+                      ].copy()
+
+                      ticker_periods[report] = sorted(
+                          df["Quarter"]
+                          .dropna()
+                          .astype(str)
+                          .unique()
+                      )
+
+                      raw_frames.append(df)
+
+                  except Exception as e:
+
+                      print(
+                          f"  ERROR {report}: {e}",
+                          flush=True
+                      )
+
+                      errors.append({
+                          "symbol": symbol,
+                          "industry": INDUSTRY[symbol],
+                          "report": report,
+                          "error_type":
+                              type(e).__name__,
+                          "error": str(e),
+                      })
+
+              bs_periods = ticker_periods.get(
+                  "balance_sheet", []
+              )
+
+              is_periods = ticker_periods.get(
+                  "income_statement", []
+              )
+
+              coverage.append({
+                  "symbol": symbol,
+                  "industry": INDUSTRY[symbol],
+
+                  "bs_periods":
+                      len(bs_periods),
+
+                  "is_periods":
+                      len(is_periods),
+
+                  "bs_first":
+                      bs_periods[0]
+                      if bs_periods else None,
+
+                  "bs_last":
+                      bs_periods[-1]
+                      if bs_periods else None,
+
+                  "is_first":
+                      is_periods[0]
+                      if is_periods else None,
+
+                  "is_last":
+                      is_periods[-1]
+                      if is_periods else None,
+
+                  "has_2020_2025":
+                      (
+                          "2020Q1" in is_periods
+                          and "2025Q4" in is_periods
+                      ),
+              })
+
+              # Bronze API không cần cố chạy quá nhanh.
+              time.sleep(0.20)
+
+
+          # ==========================================================
+          # SAVE RAW DATA
+          # ==========================================================
+
+          if not raw_frames:
+              raise RuntimeError(
+                  "No financial data returned"
+              )
+
+          raw = pd.concat(
+              raw_frames,
+              ignore_index=True
+          )
+
+          raw["Quarter"] = (
+              raw["Quarter"]
+              .astype(str)
+          )
+
+          preferred = [
+              "symbol",
+              "industry",
+              "report",
+              "period",
+              "Quarter",
+              "id",
+              "name",
+              "value",
+              "unit",
+              "order",
+              "level",
+              "off_balance",
+              "source",
+              "retrieval_utc",
+          ]
+
+          cols = [
+              c for c in preferred
+              if c in raw.columns
+          ]
+
+          extra_cols = [
+              c for c in raw.columns
+              if c not in cols
+          ]
+
+          raw = raw[
+              cols + extra_cols
+          ]
+
+          raw.to_csv(
+              OUT / "financial_raw.csv",
+              index=False,
+              encoding="utf-8-sig"
+          )
+
+          raw.to_parquet(
+              OUT / "financial_raw.parquet",
+              index=False
+          )
+
+          coverage_df = pd.DataFrame(
+              coverage
+          )
+
+          coverage_df.to_csv(
+              OUT / "coverage.csv",
+              index=False,
+              encoding="utf-8-sig"
+          )
+
+          errors_df = pd.DataFrame(
+              errors
+          )
+
+          errors_df.to_csv(
+              OUT / "errors.csv",
+              index=False,
+              encoding="utf-8-sig"
+          )
+
+
+          # ==========================================================
+          # HPG SCHEMA AUDIT
+          # ==========================================================
+
+          hpg = raw[
+              raw["symbol"].eq("HPG")
+          ].copy()
+
+          hpg[
+              [
+                  c
+                  for c in [
+                      "report",
+                      "Quarter",
+                      "id",
+                      "name",
+                      "value"
+                  ]
+                  if c in hpg.columns
+              ]
+          ].drop_duplicates().to_csv(
+              OUT / "HPG_schema_audit.csv",
+              index=False,
+              encoding="utf-8-sig"
+          )
+
+
+          # ==========================================================
+          # EXCEL PACK
+          # ==========================================================
+
+          with pd.ExcelWriter(
+              OUT / "GPR_DIO_BRONZE_RAW_PACK.xlsx",
+              engine="openpyxl"
+          ) as writer:
+
+              coverage_df.to_excel(
+                  writer,
+                  sheet_name="Coverage",
+                  index=False
+              )
+
+              errors_df.to_excel(
+                  writer,
+                  sheet_name="Errors",
+                  index=False
+              )
+
+              hpg.head(10000).to_excel(
+                  writer,
+                  sheet_name="HPG_Audit",
+                  index=False
+              )
+
+
+          # ==========================================================
+          # SUMMARY
+          # ==========================================================
+
+          summary = {
+
+              "tier":
+                  "bronze",
+
+              "symbols_expected":
+                  len(SYMBOLS),
+
+              "symbols_with_bs":
+                  int(
+                      (
+                          coverage_df[
+                              "bs_periods"
+                          ] > 0
+                      ).sum()
+                  ),
+
+              "symbols_with_is":
+                  int(
+                      (
+                          coverage_df[
+                              "is_periods"
+                          ] > 0
+                      ).sum()
+                  ),
+
+              "raw_rows":
+                  len(raw),
+
+              "errors":
+                  len(errors_df),
+
+              "target_period":
+                  "2020Q1-2025Q4",
+
+              "balance_sheet_start":
+                  "2019Q4",
+
+              "income_statement_start":
+                  "2019Q1",
+          }
+
+          with open(
+              OUT / "run_summary.json",
+              "w",
+              encoding="utf-8"
+          ) as f:
+
+              json.dump(
+                  summary,
+                  f,
+                  ensure_ascii=False,
+                  indent=2
+              )
+
+          print(
+              "\nRUN SUMMARY"
+          )
+
+          print(
+              json.dumps(
+                  summary,
+                  ensure_ascii=False,
+                  indent=2
+              )
+          )
+
+          PY
+
+          "$VENV_PATH/bin/python" /tmp/extract.py
+
+      - name: Show summary
+        if: always()
+        shell: bash
+        run: |
+          if [ -f output/run_summary.json ]; then
+            cat output/run_summary.json
+          fi
+
+      - name: Upload artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gpr-dio-fast-data
+          path: output/
+          if-no-files-found: warn
+          retention-days: 30
