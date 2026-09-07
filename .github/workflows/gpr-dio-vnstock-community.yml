@@ -1,0 +1,49 @@
+name: GPR DIO VNStock Community extraction
+
+on:
+  push:
+    paths:
+      - 'scripts/gpr_dio_vnstock_community.py'
+      - '.github/workflows/gpr-dio-vnstock-community.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  extract-community:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      VNSTOCK_API_KEY: ${{ secrets.VNSTOCK_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Community VNStock dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --upgrade 'vnstock>=4.0.7' 'vnai>=2.5.9' pandas numpy pyarrow openpyxl
+
+      - name: Extract 42-company Community dataset
+        run: |
+          python scripts/gpr_dio_vnstock_community.py
+
+      - name: Show extraction summary
+        if: always()
+        run: |
+          if [ -f output/community/run_summary.json ]; then
+            cat output/community/run_summary.json
+          fi
+
+      - name: Upload Community dataset artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gpr-dio-vnstock-community
+          path: output/community/
+          if-no-files-found: warn
+          retention-days: 30
