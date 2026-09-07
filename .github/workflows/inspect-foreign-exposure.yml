@@ -1,0 +1,101 @@
+name: Inspect 2019 foreign exposure notes
+
+on:
+  push:
+    paths:
+      - '.github/workflows/inspect-foreign-exposure.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      VNSTOCK_API_KEY: ${{ secrets.VNSTOCK_API_KEY }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install VNStock Bronze
+        shell: bash
+        run: |
+          VENV_PATH="$RUNNER_TEMP/vnstock-venv"
+          python -m pip install --upgrade pip requests setuptools wheel
+          wget -q https://vnstocks.com/files/vnstock-cli-installer.run -O installer.run
+          chmod +x installer.run
+          ./installer.run -- --non-interactive --api-key "$VNSTOCK_API_KEY" --venv-path "$VENV_PATH" --language en
+          "$VENV_PATH/bin/python" -m ensurepip --upgrade
+          "$VENV_PATH/bin/python" -m pip install 'pandas>=2.2,<3' 'numpy<2.3' openpyxl
+
+      - name: Scan annual notes
+        shell: bash
+        run: |
+          VENV_PATH="$RUNNER_TEMP/vnstock-venv"
+          "$VENV_PATH/bin/python" - <<'PY'
+          from pathlib import Path
+          import re
+          import pandas as pd
+          from vnstock_data import Finance
+
+          OUT=Path('data/exposure_audit'); OUT.mkdir(parents=True,exist_ok=True)
+          symbols=['HPG','NKG','DPM','BFC','TCM','TNG','VHC','FMC']
+          patterns=['xuat khau','export','nuoc ngoai','foreign','thi truong','khu vuc','geographic','domestic']
+
+          def norm(s):
+              import unicodedata
+              s='' if s is None else str(s)
+              s=unicodedata.normalize('NFD',s)
+              s=''.join(c for c in s if unicodedata.category(c)!='Mn').lower().replace('đ','d')
+              return re.sub(r'[^a-z0-9]+',' ',s).strip()
+
+          matches=[]; schemas=[]; errs=[]
+          for sym in symbols:
+              try:
+                  f=Finance(source='VCI',symbol=sym)
+                  try:
+                      df=f.note(period='year',lang='vi',drop_empty=False,com_type='Regular',format='long')
+                  except TypeError:
+                      try: df=f.note(period='year',lang='vi',drop_empty=False,com_type='Regular')
+                      except TypeError: df=f.note(period='year',lang='vi',drop_empty=False)
+                  df=df.copy().reset_index(drop=True)
+                  schemas.append({'symbol':sym,'columns':' | '.join(map(str,df.columns)),'rows':len(df)})
+                  # identify text-bearing columns
+                  textcols=[c for c in df.columns if df[c].dtype=='object']
+                  mask=pd.Series(False,index=df.index)
+                  for c in textcols:
+                      n=df[c].map(norm)
+                      mask |= n.map(lambda x:any(p in x for p in patterns))
+                  hit=df[mask].copy()
+                  hit['symbol']=sym
+                  matches.append(hit)
+                  df.head(300).to_csv(OUT/f'{sym}_note_head.csv',index=False,encoding='utf-8-sig')
+              except Exception as e:
+                  errs.append({'symbol':sym,'error_type':type(e).__name__,'error':str(e)})
+
+          pd.DataFrame(schemas).to_csv(OUT/'schemas.csv',index=False,encoding='utf-8-sig')
+          pd.DataFrame(errs).to_csv(OUT/'errors.csv',index=False,encoding='utf-8-sig')
+          if matches:
+              pd.concat(matches,ignore_index=True,sort=False).to_csv(OUT/'foreign_exposure_note_matches.csv',index=False,encoding='utf-8-sig')
+          else:
+              pd.DataFrame().to_csv(OUT/'foreign_exposure_note_matches.csv',index=False)
+          PY
+
+      - name: Commit exposure audit
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/exposure_audit/
+          if git diff --cached --quiet; then echo 'No changes'; else git commit -m 'Add VNStock 2019 note exposure audit'; git push; fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: foreign-exposure-audit
+          path: data/exposure_audit/
+          retention-days: 30
