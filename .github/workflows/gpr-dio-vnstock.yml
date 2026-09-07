@@ -1,0 +1,70 @@
+name: GPR DIO VNStock extraction
+
+on:
+  push:
+    paths:
+      - 'scripts/gpr_dio_vnstock.py'
+      - '.github/workflows/gpr-dio-vnstock.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      VNSTOCK_API_KEY: ${{ secrets.VNSTOCK_API_KEY }}
+      VENV_PATH: ${{ runner.temp }}/vnstock-venv
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Check VNStock API key secret
+        shell: bash
+        run: |
+          if [ -z "$VNSTOCK_API_KEY" ]; then
+            echo "::error::Repository secret VNSTOCK_API_KEY is not configured. Add it in Settings > Secrets and variables > Actions."
+            exit 2
+          fi
+
+      - name: Install VNStock sponsor libraries
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip
+          wget -q https://vnstocks.com/files/vnstock-cli-installer.run -O installer.run
+          chmod +x installer.run
+          ./installer.run -- --non-interactive --api-key "$VNSTOCK_API_KEY" --venv-path "$VENV_PATH" --language en
+          "$VENV_PATH/bin/python" -m pip install --upgrade pandas numpy pyarrow
+          "$VENV_PATH/bin/python" - <<'PY'
+          import vnstock_data
+          from vnstock_data import Fundamental
+          print('vnstock_data import OK')
+          print(Fundamental)
+          PY
+
+      - name: Extract 42-company quarterly financial dataset
+        shell: bash
+        run: |
+          "$VENV_PATH/bin/python" scripts/gpr_dio_vnstock.py
+
+      - name: Show summary
+        if: always()
+        shell: bash
+        run: |
+          if [ -f output/run_summary.json ]; then
+            cat output/run_summary.json
+          fi
+
+      - name: Upload dataset artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gpr-dio-vnstock-data
+          path: output/
+          if-no-files-found: warn
+          retention-days: 30
