@@ -1,0 +1,30 @@
+name: VNStock DXG verification
+
+on:
+  push:
+    paths:
+      - '.github/workflows/vnstock-dxg-test.yml'
+  workflow_dispatch:
+
+jobs:
+  query-dxg:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install Vnstock
+        run: |
+          python -m pip install --upgrade pip
+          pip install 'vnstock>=4.0.5' 'vnai>=2.5.6'
+      - name: Query DXG 2026-09-04
+        run: |
+          python - <<'PY'
+          from vnstock.ui import Market
+          mkt = Market()
+          df = mkt.equity('DXG').ohlcv(start='2026-09-04', end='2026-09-05', interval='1D')
+          print('VNSTOCK_RESULT_BEGIN')
+          print(df.to_string(index=False))
+          print('VNSTOCK_RESULT_END')
+          PY
