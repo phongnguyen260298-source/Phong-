@@ -1,12 +1,35 @@
-from fastapi import FastAPI, HTTPException, Query
+import os
+import secrets
+
+from fastapi import Depends, FastAPI, HTTPException, Query, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from src.vnstock_service import get_daily_price, get_ohlcv
 
 app = FastAPI(
     title="VNStock ChatGPT API",
-    version="0.1.0",
+    version="0.2.0",
     description="Remote VNStock service for ChatGPT and other agents.",
 )
+
+bearer = HTTPBearer(auto_error=False)
+
+
+def require_server_token(
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer),
+) -> None:
+    expected = os.getenv("VNSTOCK_SERVER_TOKEN")
+    if not expected:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="VNSTOCK_SERVER_TOKEN is not configured",
+        )
+    provided = credentials.credentials if credentials else ""
+    if not secrets.compare_digest(provided, expected):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid server token",
+        )
 
 
 @app.get("/health")
@@ -14,7 +37,7 @@ def health() -> dict:
     return {"status": "ok"}
 
 
-@app.get("/v1/price/{symbol}")
+@app.get("/v1/price/{symbol}", dependencies=[Depends(require_server_token)])
 def price(symbol: str, date: str = Query(..., description="Trading date YYYY-MM-DD")) -> dict:
     try:
         data = get_daily_price(symbol=symbol, trading_date=date)
@@ -25,7 +48,7 @@ def price(symbol: str, date: str = Query(..., description="Trading date YYYY-MM-
         raise HTTPException(status_code=502, detail=f"VNStock error: {exc}") from exc
 
 
-@app.get("/v1/ohlcv/{symbol}")
+@app.get("/v1/ohlcv/{symbol}", dependencies=[Depends(require_server_token)])
 def ohlcv(
     symbol: str,
     start: str = Query(..., description="Start date YYYY-MM-DD"),
