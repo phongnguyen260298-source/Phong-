@@ -1,0 +1,106 @@
+name: Fetch official GPR data
+
+on:
+  push:
+    paths:
+      - '.github/workflows/fetch-gpr-official.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fetch-gpr:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install 'pandas>=2.2,<3' requests xlrd openpyxl
+
+      - name: Download and aggregate official GPR
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from io import BytesIO
+          from pathlib import Path
+          import requests
+          import pandas as pd
+
+          URL = 'https://www.matteoiacoviello.com/gpr_files/data_gpr_export.xls'
+          OUT = Path('data/gpr')
+          OUT.mkdir(parents=True, exist_ok=True)
+
+          r = requests.get(URL, timeout=60)
+          r.raise_for_status()
+          (OUT / 'data_gpr_export.xls').write_bytes(r.content)
+
+          df = pd.read_excel(BytesIO(r.content), engine='xlrd')
+          df.columns = [str(c).strip() for c in df.columns]
+          if 'month' not in df.columns:
+              raise RuntimeError(f"Expected 'month' column, got: {df.columns.tolist()}")
+          df['month'] = pd.to_datetime(df['month'])
+
+          # Keep the official global headline index and its Threat/Act components.
+          # Also preserve any Vietnam country-specific series if present.
+          base = ['month']
+          preferred = ['GPR', 'GPRT', 'GPRA']
+          vn_cols = [c for c in df.columns if ('VNM' in c.upper() or 'VIETNAM' in c.upper())]
+          keep = base + [c for c in preferred if c in df.columns] + vn_cols
+          keep = list(dict.fromkeys(keep))
+          monthly = df[keep].copy()
+          monthly = monthly[(monthly['month'] >= '2019-10-01') & (monthly['month'] <= '2025-12-31')].copy()
+          monthly['Quarter'] = monthly['month'].dt.to_period('Q').astype(str)
+          monthly.to_csv(OUT / 'gpr_monthly_2019Q4_2025Q4.csv', index=False, encoding='utf-8-sig')
+
+          numeric = [c for c in keep if c != 'month']
+          quarterly = monthly.groupby('Quarter', as_index=False)[numeric].mean(numeric_only=True)
+          for c in [x for x in ['GPR','GPRT','GPRA'] if x in quarterly.columns]:
+              quarterly[f'{c}_per100'] = quarterly[c] / 100.0
+          quarterly.to_csv(OUT / 'gpr_quarterly_2019Q4_2025Q4.csv', index=False, encoding='utf-8-sig')
+
+          meta = {
+              'source_url': URL,
+              'download_date_utc': pd.Timestamp.utcnow().isoformat(),
+              'official_columns': df.columns.tolist(),
+              'selected_columns': keep,
+              'monthly_rows': int(len(monthly)),
+              'quarterly_rows': int(len(quarterly)),
+              'first_month': str(monthly['month'].min().date()) if len(monthly) else None,
+              'last_month': str(monthly['month'].max().date()) if len(monthly) else None,
+              'first_quarter': quarterly['Quarter'].iloc[0] if len(quarterly) else None,
+              'last_quarter': quarterly['Quarter'].iloc[-1] if len(quarterly) else None,
+          }
+          (OUT / 'gpr_metadata.json').write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding='utf-8')
+          print(json.dumps(meta, ensure_ascii=False, indent=2))
+          print(quarterly.to_string(index=False))
+          PY
+
+      - name: Commit processed GPR data
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/gpr/
+          if git diff --cached --quiet; then
+            echo 'No GPR data changes to commit.'
+          else
+            git commit -m 'Update official GPR data for thesis panel'
+            git push
+          fi
+
+      - name: Upload GPR artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: official-gpr-2019Q4-2025Q4
+          path: data/gpr/
+          retention-days: 30
