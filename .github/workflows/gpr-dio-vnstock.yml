@@ -16,7 +16,6 @@ jobs:
     timeout-minutes: 90
     env:
       VNSTOCK_API_KEY: ${{ secrets.VNSTOCK_API_KEY }}
-      VENV_PATH: ${{ runner.temp }}/vnstock-venv
     steps:
       - uses: actions/checkout@v4
 
@@ -35,6 +34,7 @@ jobs:
       - name: Install VNStock sponsor libraries
         shell: bash
         run: |
+          VENV_PATH="$RUNNER_TEMP/vnstock-venv"
           python -m pip install --upgrade pip
           wget -q https://vnstocks.com/files/vnstock-cli-installer.run -O installer.run
           chmod +x installer.run
@@ -50,6 +50,7 @@ jobs:
       - name: Extract 42-company quarterly financial dataset
         shell: bash
         run: |
+          VENV_PATH="$RUNNER_TEMP/vnstock-venv"
           "$VENV_PATH/bin/python" scripts/gpr_dio_vnstock.py
 
       - name: Show summary
