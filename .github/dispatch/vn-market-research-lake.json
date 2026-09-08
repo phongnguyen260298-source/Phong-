@@ -2,6 +2,6 @@
   "mode": "core",
   "batch_index": 0,
   "batch_size": 25,
-  "symbol": "HPG",
-  "request_id": "core-hpg-v3-smoke-2026-09-08T15:50+07:00"
+  "symbol": "",
+  "request_id": "core-batch0-validation-2026-09-08T15:55+07:00"
 }
