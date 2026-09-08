@@ -41,7 +41,7 @@ permissions:
 jobs:
   extract:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 120
     env:
       VNSTOCK_API_KEY: ${{ secrets.VNSTOCK_API_KEY }}
       VN_RESEARCH_DELAY: "0.25"
@@ -97,14 +97,6 @@ jobs:
               print(f"batch_index={batch_index}", file=f)
               print(f"batch_size={batch_size}", file=f)
               print(f"symbol={symbol}", file=f)
-
-          print(json.dumps({
-              "event": event,
-              "mode": mode,
-              "batch_index": batch_index,
-              "batch_size": batch_size,
-              "symbol": symbol,
-          }, ensure_ascii=False, indent=2))
           PY
 
       - name: Setup Python
@@ -125,25 +117,15 @@ jobs:
         run: |
           set -euo pipefail
           VENV_PATH="$RUNNER_TEMP/vnstock-venv"
-
           python -m pip install --upgrade pip requests setuptools wheel
           wget -q https://vnstocks.com/files/vnstock-cli-installer.run -O installer.run
           chmod +x installer.run
           ./installer.run -- --non-interactive --api-key "$VNSTOCK_API_KEY" --venv-path "$VENV_PATH" --language en
-
           "$VENV_PATH/bin/python" -m ensurepip --upgrade
-          "$VENV_PATH/bin/python" -m pip install \
-            "pandas>=2.2,<3" \
-            "numpy>=2.0,<2.3" \
-            pyarrow \
-            openpyxl \
-            requests
-
+          "$VENV_PATH/bin/python" -m pip install "pandas>=2.2,<3" "numpy>=2.0,<2.3" pyarrow openpyxl requests
           "$VENV_PATH/bin/python" - <<'PY'
-          import vnstock_data
           from vnstock_data import Finance, Listing, Macro, Quote, Reference, Trading
           print("VNStock sponsored environment OK")
-          print("Finance:", Finance)
           PY
 
       - name: Extract research lake batch
@@ -151,7 +133,7 @@ jobs:
         run: |
           set -euo pipefail
           VENV_PATH="$RUNNER_TEMP/vnstock-venv"
-          "$VENV_PATH/bin/python" scripts/vn_market_research_lake.py \
+          "$VENV_PATH/bin/python" scripts/vn_market_research_lake_v2.py \
             --mode "${{ steps.params.outputs.mode }}" \
             --batch-index "${{ steps.params.outputs.batch_index }}" \
             --batch-size "${{ steps.params.outputs.batch_size }}" \
@@ -162,13 +144,9 @@ jobs:
         if: always()
         shell: bash
         run: |
-          if [ -f output/vn_research_lake/run_summary.json ]; then
-            cat output/vn_research_lake/run_summary.json
-          fi
-          if [ -f output/vn_research_lake/errors.csv ]; then
-            echo "--- ERRORS (first 50 lines) ---"
-            head -50 output/vn_research_lake/errors.csv || true
-          fi
+          if [ -f output/vn_research_lake/run_summary.json ]; then cat output/vn_research_lake/run_summary.json; fi
+          if [ -f output/vn_research_lake/manifest.csv ]; then echo "--- MANIFEST ---"; cat output/vn_research_lake/manifest.csv; fi
+          if [ -f output/vn_research_lake/errors.csv ]; then echo "--- ERRORS ---"; head -100 output/vn_research_lake/errors.csv || true; fi
 
       - name: Upload artifact
         if: always()
