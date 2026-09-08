@@ -1,0 +1,158 @@
+name: VN Research Lake Full Notes and Macro
+
+on:
+  workflow_dispatch:
+    inputs:
+      batch_size:
+        description: "Symbols per notes batch"
+        required: true
+        default: "25"
+        type: string
+  workflow_run:
+    workflows: ["VN Research Lake Full Core"]
+    types: [completed]
+
+permissions:
+  contents: read
+
+env:
+  VNSTOCK_API_KEY: ${{ secrets.VNSTOCK_API_KEY }}
+  VN_RESEARCH_DELAY: "0.25"
+
+jobs:
+  plan:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+      batch_size: ${{ steps.params.outputs.batch_size }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve batch size
+        id: params
+        shell: bash
+        env:
+          INPUT_BATCH_SIZE: ${{ inputs.batch_size }}
+        run: |
+          python - <<'PY'
+          import os
+          size = int(os.environ.get('INPUT_BATCH_SIZE') or 25)
+          if size < 1 or size > 100: raise SystemExit('batch_size must be 1..100')
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as f: print(f'batch_size={size}', file=f)
+          PY
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install VNStock Bronze
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$VNSTOCK_API_KEY"
+          VENV_PATH="$RUNNER_TEMP/vnstock-venv"
+          python -m pip install --upgrade pip requests setuptools wheel
+          wget -q https://vnstocks.com/files/vnstock-cli-installer.run -O installer.run
+          chmod +x installer.run
+          ./installer.run -- --non-interactive --api-key "$VNSTOCK_API_KEY" --venv-path "$VENV_PATH" --language en
+          "$VENV_PATH/bin/python" -m ensurepip --upgrade
+          "$VENV_PATH/bin/python" -m pip install "pandas>=2.2,<3" "numpy>=2.0,<2.3" pyarrow openpyxl requests
+      - name: Build notes matrix
+        id: plan
+        shell: bash
+        run: |
+          VENV_PATH="$RUNNER_TEMP/vnstock-venv"
+          SIZE="${{ steps.params.outputs.batch_size }}"
+          "$VENV_PATH/bin/python" scripts/vn_market_research_lake_v3.py --mode universe --batch-index 0 --batch-size "$SIZE" --out output/plan
+          "$VENV_PATH/bin/python" - <<'PY'
+          import json, math, os
+          from pathlib import Path
+          s=json.loads(Path('output/plan/run_summary.json').read_text())
+          total=math.ceil(int(s['universe_n'])/int(s['batch_size']))
+          matrix=json.dumps({'batch':list(range(total))},separators=(',',':'))
+          with open(os.environ['GITHUB_OUTPUT'],'a') as f: print(f'matrix={matrix}',file=f)
+          print({'universe_n':s['universe_n'],'total_batches':total})
+          PY
+
+  macro:
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install VNStock Bronze
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$VNSTOCK_API_KEY"
+          VENV_PATH="$RUNNER_TEMP/vnstock-venv"
+          python -m pip install --upgrade pip requests setuptools wheel
+          wget -q https://vnstocks.com/files/vnstock-cli-installer.run -O installer.run
+          chmod +x installer.run
+          ./installer.run -- --non-interactive --api-key "$VNSTOCK_API_KEY" --venv-path "$VENV_PATH" --language en
+          "$VENV_PATH/bin/python" -m ensurepip --upgrade
+          "$VENV_PATH/bin/python" -m pip install "pandas>=2.2,<3" "numpy>=2.0,<2.3" pyarrow openpyxl requests
+      - name: Extract macro library
+        shell: bash
+        run: |
+          VENV_PATH="$RUNNER_TEMP/vnstock-venv"
+          "$VENV_PATH/bin/python" scripts/vn_market_research_lake_v3.py --mode macro --batch-index 0 --batch-size 25 --out output/vn_research_lake
+      - name: Upload macro artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vn-research-macro-2013-2025
+          path: output/vn_research_lake/
+          retention-days: 90
+
+  notes:
+    needs: [plan, macro]
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install VNStock Bronze
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$VNSTOCK_API_KEY"
+          VENV_PATH="$RUNNER_TEMP/vnstock-venv"
+          python -m pip install --upgrade pip requests setuptools wheel
+          wget -q https://vnstocks.com/files/vnstock-cli-installer.run -O installer.run
+          chmod +x installer.run
+          ./installer.run -- --non-interactive --api-key "$VNSTOCK_API_KEY" --venv-path "$VENV_PATH" --language en
+          "$VENV_PATH/bin/python" -m ensurepip --upgrade
+          "$VENV_PATH/bin/python" -m pip install "pandas>=2.2,<3" "numpy>=2.0,<2.3" pyarrow openpyxl requests
+      - name: Extract notes batch ${{ matrix.batch }}
+        shell: bash
+        run: |
+          VENV_PATH="$RUNNER_TEMP/vnstock-venv"
+          "$VENV_PATH/bin/python" scripts/vn_market_research_lake_v3.py \
+            --mode notes \
+            --batch-index "${{ matrix.batch }}" \
+            --batch-size "${{ needs.plan.outputs.batch_size }}" \
+            --out output/vn_research_lake
+      - name: Show notes QC
+        if: always()
+        shell: bash
+        run: |
+          cat output/vn_research_lake/run_summary.json 2>/dev/null || true
+          head -100 output/vn_research_lake/errors.csv 2>/dev/null || true
+      - name: Upload notes batch
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vn-research-notes-b${{ matrix.batch }}
+          path: output/vn_research_lake/
+          if-no-files-found: warn
+          retention-days: 90
+          compression-level: 6
