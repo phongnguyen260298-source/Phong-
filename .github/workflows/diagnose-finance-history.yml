@@ -1,0 +1,75 @@
+name: Diagnose Finance History Coverage
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/diagnose-finance-history.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      VNSTOCK_API_KEY: ${{ secrets.VNSTOCK_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install VNStock Bronze
+        shell: bash
+        run: |
+          set -euo pipefail
+          VENV_PATH="$RUNNER_TEMP/vnstock-venv"
+          python -m pip install --upgrade pip requests setuptools wheel
+          wget -q https://vnstocks.com/files/vnstock-cli-installer.run -O installer.run
+          chmod +x installer.run
+          ./installer.run -- --non-interactive --api-key "$VNSTOCK_API_KEY" --venv-path "$VENV_PATH" --language en
+          "$VENV_PATH/bin/python" -m ensurepip --upgrade
+          "$VENV_PATH/bin/python" -m pip install "pandas>=2.2,<3" pyarrow
+      - name: Compare sources
+        shell: bash
+        run: |
+          VENV_PATH="$RUNNER_TEMP/vnstock-venv"
+          "$VENV_PATH/bin/python" - <<'PY'
+          import re
+          import pandas as pd
+          from vnstock_data import Finance, Fundamental
+
+          def summarize(label, df):
+              if df is None or df.empty:
+                  print(label, 'EMPTY')
+                  return
+              p = df['period'].dropna().astype(str).drop_duplicates().tolist() if 'period' in df.columns else []
+              def key(v):
+                  m = re.search(r'(20\\d{2}|19\\d{2})', v)
+                  y = int(m.group(1)) if m else -1
+                  q = re.search(r'Q([1-4])', v.upper())
+                  return (y, int(q.group(1)) if q else 0, v)
+              p = sorted(p, key=key)
+              print(label, 'rows=', len(df), 'periods=', len(p), 'first=', p[0] if p else None, 'last=', p[-1] if p else None)
+
+          for source in ['VCI','MAS','KBS']:
+              for report in ['balance_sheet','income_statement','cash_flow','ratio']:
+                  try:
+                      f = Finance(source=source, symbol='HPG')
+                      df = getattr(f, report)(period='quarter', lang='vi', drop_empty=False, format='long')
+                      summarize(f'Finance {source} {report}', df)
+                  except Exception as e:
+                      print(f'Finance {source} {report} ERROR {type(e).__name__}: {e}')
+
+          try:
+              eq = Fundamental().equity('HPG')
+              for report in ['balance_sheet','income_statement','cash_flow','ratio']:
+                  try:
+                      df = getattr(eq, report)(period='quarter', lang='vi', drop_empty=False, format='long')
+                      summarize(f'Fundamental {report}', df)
+                  except Exception as e:
+                      print(f'Fundamental {report} ERROR {type(e).__name__}: {e}')
+          except Exception as e:
+              print('Fundamental init ERROR', type(e).__name__, e)
+          PY
