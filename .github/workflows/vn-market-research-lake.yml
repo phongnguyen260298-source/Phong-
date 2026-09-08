@@ -29,6 +29,11 @@ on:
         required: false
         default: ""
         type: string
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/dispatch/vn-market-research-lake.json"
 
 permissions:
   contents: read
@@ -44,6 +49,63 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Resolve request parameters
+        id: params
+        shell: bash
+        env:
+          INPUT_MODE: ${{ inputs.mode }}
+          INPUT_BATCH_INDEX: ${{ inputs.batch_index }}
+          INPUT_BATCH_SIZE: ${{ inputs.batch_size }}
+          INPUT_SYMBOL: ${{ inputs.symbol }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import re
+          from pathlib import Path
+
+          event = os.environ.get("GITHUB_EVENT_NAME", "")
+          if event == "workflow_dispatch":
+              data = {
+                  "mode": os.environ.get("INPUT_MODE") or "universe",
+                  "batch_index": os.environ.get("INPUT_BATCH_INDEX") or "0",
+                  "batch_size": os.environ.get("INPUT_BATCH_SIZE") or "25",
+                  "symbol": os.environ.get("INPUT_SYMBOL") or "",
+              }
+          else:
+              cfg = Path(".github/dispatch/vn-market-research-lake.json")
+              data = json.loads(cfg.read_text(encoding="utf-8"))
+
+          mode = str(data.get("mode", "universe")).strip().lower()
+          if mode not in {"universe", "core", "notes", "trading", "macro"}:
+              raise SystemExit(f"Invalid mode: {mode}")
+
+          batch_index = int(data.get("batch_index", 0))
+          batch_size = int(data.get("batch_size", 25))
+          if batch_index < 0:
+              raise SystemExit("batch_index must be >= 0")
+          if batch_size < 1 or batch_size > 200:
+              raise SystemExit("batch_size must be between 1 and 200")
+
+          symbol = str(data.get("symbol", "")).upper().strip()
+          if symbol and not re.fullmatch(r"[A-Z0-9]{3,10}", symbol):
+              raise SystemExit(f"Invalid symbol: {symbol}")
+
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as f:
+              print(f"mode={mode}", file=f)
+              print(f"batch_index={batch_index}", file=f)
+              print(f"batch_size={batch_size}", file=f)
+              print(f"symbol={symbol}", file=f)
+
+          print(json.dumps({
+              "event": event,
+              "mode": mode,
+              "batch_index": batch_index,
+              "batch_size": batch_size,
+              "symbol": symbol,
+          }, ensure_ascii=False, indent=2))
+          PY
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -90,10 +152,10 @@ jobs:
           set -euo pipefail
           VENV_PATH="$RUNNER_TEMP/vnstock-venv"
           "$VENV_PATH/bin/python" scripts/vn_market_research_lake.py \
-            --mode "${{ inputs.mode }}" \
-            --batch-index "${{ inputs.batch_index }}" \
-            --batch-size "${{ inputs.batch_size }}" \
-            --symbol "${{ inputs.symbol }}" \
+            --mode "${{ steps.params.outputs.mode }}" \
+            --batch-index "${{ steps.params.outputs.batch_index }}" \
+            --batch-size "${{ steps.params.outputs.batch_size }}" \
+            --symbol "${{ steps.params.outputs.symbol }}" \
             --out output/vn_research_lake
 
       - name: Show summary
@@ -112,7 +174,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: vn-research-${{ inputs.mode }}-b${{ inputs.batch_index }}
+          name: vn-research-${{ steps.params.outputs.mode }}-b${{ steps.params.outputs.batch_index }}
           path: output/vn_research_lake/
           if-no-files-found: warn
           retention-days: 90
