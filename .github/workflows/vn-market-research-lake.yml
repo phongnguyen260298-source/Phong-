@@ -124,7 +124,7 @@ jobs:
           "$VENV_PATH/bin/python" -m ensurepip --upgrade
           "$VENV_PATH/bin/python" -m pip install "pandas>=2.2,<3" "numpy>=2.0,<2.3" pyarrow openpyxl requests
           "$VENV_PATH/bin/python" - <<'PY'
-          from vnstock_data import Finance, Listing, Macro, Quote, Reference, Trading
+          from vnstock_data import Finance, Fundamental, Listing, Macro, Quote, Reference, Trading
           print("VNStock sponsored environment OK")
           PY
 
@@ -133,7 +133,7 @@ jobs:
         run: |
           set -euo pipefail
           VENV_PATH="$RUNNER_TEMP/vnstock-venv"
-          "$VENV_PATH/bin/python" scripts/vn_market_research_lake_v2.py \
+          "$VENV_PATH/bin/python" scripts/vn_market_research_lake_v3.py \
             --mode "${{ steps.params.outputs.mode }}" \
             --batch-index "${{ steps.params.outputs.batch_index }}" \
             --batch-size "${{ steps.params.outputs.batch_size }}" \
