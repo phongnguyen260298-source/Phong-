@@ -1,7 +1,7 @@
 {
-  "mode": "universe",
+  "mode": "core",
   "batch_index": 0,
   "batch_size": 25,
-  "symbol": "",
-  "request_id": "bridge-setup-2026-09-08"
+  "symbol": "HPG",
+  "request_id": "core-hpg-smoke-2026-09-08T15:40+07:00"
 }
