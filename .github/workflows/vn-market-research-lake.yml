@@ -1,0 +1,119 @@
+name: VN Market Research Lake
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Extraction mode"
+        required: true
+        default: "universe"
+        type: choice
+        options:
+          - universe
+          - core
+          - notes
+          - trading
+          - macro
+      batch_index:
+        description: "0-based batch index; ignored for universe/macro"
+        required: true
+        default: "0"
+        type: string
+      batch_size:
+        description: "Symbols per run"
+        required: true
+        default: "25"
+        type: string
+      symbol:
+        description: "Optional single ticker override, e.g. HPG"
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      VNSTOCK_API_KEY: ${{ secrets.VNSTOCK_API_KEY }}
+      VN_RESEARCH_DELAY: "0.25"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Check API key
+        shell: bash
+        run: |
+          if [ -z "$VNSTOCK_API_KEY" ]; then
+            echo "::error::VNSTOCK_API_KEY repository secret is missing"
+            exit 2
+          fi
+
+      - name: Install VNStock Bronze
+        shell: bash
+        run: |
+          set -euo pipefail
+          VENV_PATH="$RUNNER_TEMP/vnstock-venv"
+
+          python -m pip install --upgrade pip requests setuptools wheel
+          wget -q https://vnstocks.com/files/vnstock-cli-installer.run -O installer.run
+          chmod +x installer.run
+          ./installer.run -- --non-interactive --api-key "$VNSTOCK_API_KEY" --venv-path "$VENV_PATH" --language en
+
+          "$VENV_PATH/bin/python" -m ensurepip --upgrade
+          "$VENV_PATH/bin/python" -m pip install \
+            "pandas>=2.2,<3" \
+            "numpy>=2.0,<2.3" \
+            pyarrow \
+            openpyxl \
+            requests
+
+          "$VENV_PATH/bin/python" - <<'PY'
+          import vnstock_data
+          from vnstock_data import Finance, Listing, Macro, Quote, Reference, Trading
+          print("VNStock sponsored environment OK")
+          print("Finance:", Finance)
+          PY
+
+      - name: Extract research lake batch
+        shell: bash
+        run: |
+          set -euo pipefail
+          VENV_PATH="$RUNNER_TEMP/vnstock-venv"
+          "$VENV_PATH/bin/python" scripts/vn_market_research_lake.py \
+            --mode "${{ inputs.mode }}" \
+            --batch-index "${{ inputs.batch_index }}" \
+            --batch-size "${{ inputs.batch_size }}" \
+            --symbol "${{ inputs.symbol }}" \
+            --out output/vn_research_lake
+
+      - name: Show summary
+        if: always()
+        shell: bash
+        run: |
+          if [ -f output/vn_research_lake/run_summary.json ]; then
+            cat output/vn_research_lake/run_summary.json
+          fi
+          if [ -f output/vn_research_lake/errors.csv ]; then
+            echo "--- ERRORS (first 50 lines) ---"
+            head -50 output/vn_research_lake/errors.csv || true
+          fi
+
+      - name: Upload artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vn-research-${{ inputs.mode }}-b${{ inputs.batch_index }}
+          path: output/vn_research_lake/
+          if-no-files-found: warn
+          retention-days: 90
+          compression-level: 6
