@@ -1,0 +1,162 @@
+name: VN Research Lake Full Core
+
+on:
+  workflow_dispatch:
+    inputs:
+      batch_size:
+        description: "Symbols per batch"
+        required: true
+        default: "25"
+        type: string
+      max_parallel:
+        description: "Reserved; workflow currently runs one Bronze batch at a time"
+        required: false
+        default: "1"
+        type: string
+  push:
+    branches: [main]
+    paths:
+      - ".github/dispatch/vn-research-full-core.json"
+
+permissions:
+  contents: read
+
+env:
+  VNSTOCK_API_KEY: ${{ secrets.VNSTOCK_API_KEY }}
+  VN_RESEARCH_DELAY: "0.25"
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+      batch_size: ${{ steps.params.outputs.batch_size }}
+      universe_n: ${{ steps.plan.outputs.universe_n }}
+      total_batches: ${{ steps.plan.outputs.total_batches }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve parameters
+        id: params
+        shell: bash
+        env:
+          INPUT_BATCH_SIZE: ${{ inputs.batch_size }}
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          if os.environ.get('GITHUB_EVENT_NAME') == 'workflow_dispatch':
+              size = int(os.environ.get('INPUT_BATCH_SIZE') or 25)
+          else:
+              cfg = json.loads(Path('.github/dispatch/vn-research-full-core.json').read_text(encoding='utf-8'))
+              size = int(cfg.get('batch_size', 25))
+          if size < 1 or size > 100:
+              raise SystemExit('batch_size must be 1..100')
+          with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as f:
+              print(f'batch_size={size}', file=f)
+          PY
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install VNStock Bronze
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$VNSTOCK_API_KEY"
+          VENV_PATH="$RUNNER_TEMP/vnstock-venv"
+          python -m pip install --upgrade pip requests setuptools wheel
+          wget -q https://vnstocks.com/files/vnstock-cli-installer.run -O installer.run
+          chmod +x installer.run
+          ./installer.run -- --non-interactive --api-key "$VNSTOCK_API_KEY" --venv-path "$VENV_PATH" --language en
+          "$VENV_PATH/bin/python" -m ensurepip --upgrade
+          "$VENV_PATH/bin/python" -m pip install "pandas>=2.2,<3" "numpy>=2.0,<2.3" pyarrow openpyxl requests
+
+      - name: Build universe and matrix
+        id: plan
+        shell: bash
+        run: |
+          set -euo pipefail
+          VENV_PATH="$RUNNER_TEMP/vnstock-venv"
+          SIZE="${{ steps.params.outputs.batch_size }}"
+          "$VENV_PATH/bin/python" scripts/vn_market_research_lake_v3.py --mode universe --batch-index 0 --batch-size "$SIZE" --out output/plan
+          "$VENV_PATH/bin/python" - <<'PY'
+          import json, math, os
+          from pathlib import Path
+          s = json.loads(Path('output/plan/run_summary.json').read_text(encoding='utf-8'))
+          n = int(s['universe_n'])
+          size = int(s['batch_size'])
+          total = math.ceil(n / size)
+          matrix = json.dumps({'batch': list(range(total))}, separators=(',', ':'))
+          with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as f:
+              print(f'matrix={matrix}', file=f)
+              print(f'universe_n={n}', file=f)
+              print(f'total_batches={total}', file=f)
+          print({'universe_n': n, 'batch_size': size, 'total_batches': total})
+          PY
+
+      - name: Upload universe snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: vn-research-universe-full-core
+          path: output/plan/
+          retention-days: 90
+
+  extract:
+    needs: plan
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install VNStock Bronze
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$VNSTOCK_API_KEY"
+          VENV_PATH="$RUNNER_TEMP/vnstock-venv"
+          python -m pip install --upgrade pip requests setuptools wheel
+          wget -q https://vnstocks.com/files/vnstock-cli-installer.run -O installer.run
+          chmod +x installer.run
+          ./installer.run -- --non-interactive --api-key "$VNSTOCK_API_KEY" --venv-path "$VENV_PATH" --language en
+          "$VENV_PATH/bin/python" -m ensurepip --upgrade
+          "$VENV_PATH/bin/python" -m pip install "pandas>=2.2,<3" "numpy>=2.0,<2.3" pyarrow openpyxl requests
+
+      - name: Extract core batch ${{ matrix.batch }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          VENV_PATH="$RUNNER_TEMP/vnstock-venv"
+          "$VENV_PATH/bin/python" scripts/vn_market_research_lake_v3.py \
+            --mode core \
+            --batch-index "${{ matrix.batch }}" \
+            --batch-size "${{ needs.plan.outputs.batch_size }}" \
+            --out output/vn_research_lake
+
+      - name: Show QC summary
+        if: always()
+        shell: bash
+        run: |
+          echo "Batch ${{ matrix.batch }}"
+          cat output/vn_research_lake/run_summary.json 2>/dev/null || true
+          echo "--- ERRORS ---"
+          head -100 output/vn_research_lake/errors.csv 2>/dev/null || true
+
+      - name: Upload batch artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vn-research-core-b${{ matrix.batch }}
+          path: output/vn_research_lake/
+          if-no-files-found: warn
+          retention-days: 90
+          compression-level: 6
