@@ -9,7 +9,7 @@ from scipy.stats import t as tdist
 from vnstock import Market
 
 START='2020-01-01'; END='2025-12-31'
-REQUEST_PAUSE=4.2  # guest/community VNStock safety: <15 symbol calls/minute
+REQUEST_PAUSE=4.2
 OUT=Path('data/gpr_market_top5_v2'); OUT.mkdir(parents=True, exist_ok=True)
 exp=pd.read_csv('data/research_cohorts/vci578_preexposure.csv')
 bg=pd.read_csv('data/research_cohorts/vci578_behavioral_groups.csv')
@@ -31,12 +31,9 @@ def fetch_one(sym):
             z=z.dropna().sort_values('date'); z['symbol']=sym
             return sym,z,None
         except BaseException as e:
-            last=e
-            # Back off aggressively on library rate-limit/SystemExit behavior.
-            time.sleep(15*(k+1))
+            last=e; time.sleep(65 if 'limit' in str(e).lower() else 15*(k+1))
     return sym,None,f'{type(last).__name__}:{last}'
 
-# Sequential retrieval is deliberate: GitHub-hosted IPs can be rate-limited at 20 requests/minute.
 frames=[]; errors=[]
 for i,sym0 in enumerate(symbols,1):
     sym,z,e=fetch_one(sym0)
@@ -44,7 +41,6 @@ for i,sym0 in enumerate(symbols,1):
     else: errors.append({'symbol':sym,'error':e})
     if i%25==0:
         print('done',i,'/',len(symbols),'ok',len(frames),'errors',len(errors),flush=True)
-        # persist retrieval status even if a later symbol/library call fails
         pd.DataFrame(errors).to_csv(OUT/'price_errors_partial.csv',index=False)
     time.sleep(REQUEST_PAUSE)
 
