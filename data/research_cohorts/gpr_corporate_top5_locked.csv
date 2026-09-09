@@ -1,0 +1,6 @@
+rank,direction,shock,group,outcome,beta_main,p_main,q_fdr,p_lead1,p_lag1,p_lag2,p_did2022,p_placebo2021,p_joint_pretrend,prior_score,status
+1,D1_Threat_HighLiab,GPR_THREATS,HighLiab_TopTercile,CFO/Assets,-0.004391,0.00029,0.000724,0.06236,0.29998,0.30545,0.001569,0.053677,0.680634,94,BRIGHTEST
+2,D2_Acts_HighLiab,GPR_ACTS,HighLiab_TopTercile,CFO/Assets,-0.004472,0.000392,0.000653,0.18643,0.06069,0.17217,0.001569,0.053677,0.680634,91,BRIGHT
+3,D3_Acts_CashConversionTrap,GPR_ACTS,CashConversionTrap,CFO/Assets,-0.004143,0.028008,0.03501,0.41122,0.20078,0.38315,0.158729,0.537501,0.99066,84,NOVEL_CHALLENGER
+4,D4_Threat_DoubleExposure,GPR_THREATS,DoubleExposure_TopTercile,CFO/Assets,-0.002679,0.078855,0.098569,0.38508,0.39048,0.42360,0.028215,0.096791,0.977028,82,DID_CHALLENGER
+5,D5_Threat_FragileLowMargin,GPR_THREATS,FragileLowMarginFunding,CFO/Assets,,,,,,,0.045224,0.193908,0.155034,75,BACKUP_DID
