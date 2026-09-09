@@ -10,9 +10,11 @@ on:
       - 'data/research_cohorts/vci578_behavioral_groups.csv'
   workflow_dispatch:
 
+# Do not cancel a running full-history retrieval when another push occurs.
+# Each run owns its own Actions artifacts; premature cancellation leaves the analyzer with zero shard files.
 concurrency:
-  group: gpr-market-top5-v4
-  cancel-in-progress: true
+  group: gpr-market-top5-v4-${{ github.run_id }}
+  cancel-in-progress: false
 
 permissions:
   contents: write
@@ -28,7 +30,7 @@ jobs:
       matrix:
         shard: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19]
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -70,6 +72,10 @@ jobs:
           pattern: price-v4-shard-*
           path: data/gpr_market_top5_v4/shards
           merge-multiple: true
+      - name: Verify shard artifacts
+        run: |
+          find data/gpr_market_top5_v4/shards -type f -maxdepth 2 -print
+          test "$(find data/gpr_market_top5_v4/shards -name 'price_shard_*.csv.gz' | wc -l)" -gt 0
       - name: Analyze Top5 market reactions
         run: python scripts/gpr_market_top5_analyze_v3.py
       - name: Commit final outputs
