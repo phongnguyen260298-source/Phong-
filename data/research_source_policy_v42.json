@@ -1,0 +1,27 @@
+{
+  "version": "v4.2",
+  "effective_date": "2026-09-09",
+  "fundamental": {
+    "primary": "VCI",
+    "fallback": "MAS",
+    "datasets": ["balance_sheet", "income_statement", "cash_flow", "ratio"],
+    "rule": "Use VCI first. Use MAS only when VCI errors or returns empty. Preserve exact source per symbol-report-period and never silently overwrite VCI with MAS."
+  },
+  "company_metadata": {
+    "primary": "VCI",
+    "fallback": "KBS",
+    "rule": "Prefer VCI for company profile and classification; retain cohort metadata as the historical listing anchor source."
+  },
+  "market_daily": {
+    "policy": "keep_existing_v41",
+    "note": "The completed v4.1 daily OHLCV lake is retained; no unnecessary re-download solely for source switching."
+  },
+  "cash_flow": {
+    "priority": "high",
+    "rule": "Re-audit quarterly CF coverage under VCI before accepting MAS sparsity as true missing data."
+  },
+  "provenance": {
+    "required_fields": ["retrieval_source", "retrieval_utc"],
+    "no_imputation": true
+  }
+}
