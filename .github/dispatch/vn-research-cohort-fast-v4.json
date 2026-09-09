@@ -1,0 +1,6 @@
+{
+  "workers": 8,
+  "chunk_size": 100,
+  "requested_at": "2026-09-09T03:00:00Z",
+  "purpose": "Build anchored HOSE-HNX cohorts and extract quarterly core research lake 2013-2025 on one VNStock device"
+}
