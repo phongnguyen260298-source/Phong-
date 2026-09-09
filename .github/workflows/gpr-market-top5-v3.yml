@@ -10,6 +10,10 @@ on:
       - 'data/research_cohorts/vci578_behavioral_groups.csv'
   workflow_dispatch:
 
+concurrency:
+  group: gpr-market-top5-v4
+  cancel-in-progress: true
+
 permissions:
   contents: write
 
