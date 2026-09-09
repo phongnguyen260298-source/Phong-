@@ -1,15 +1,15 @@
 from __future__ import annotations
 import time, json, re
 from pathlib import Path
-from concurrent.futures import ThreadPoolExecutor, as_completed
 import numpy as np
 import pandas as pd
 import requests
 import statsmodels.api as sm
 from scipy.stats import t as tdist
-from vnstock_data import Market
+from vnstock import Market
 
 START='2020-01-01'; END='2025-12-31'
+REQUEST_PAUSE=4.2  # guest/community VNStock safety: <15 symbol calls/minute
 OUT=Path('data/gpr_market_top5_v2'); OUT.mkdir(parents=True, exist_ok=True)
 exp=pd.read_csv('data/research_cohorts/vci578_preexposure.csv')
 bg=pd.read_csv('data/research_cohorts/vci578_behavioral_groups.csv')
@@ -30,18 +30,24 @@ def fetch_one(sym):
             z['date']=pd.to_datetime(z['date'],errors='coerce'); z['close']=pd.to_numeric(z['close'],errors='coerce')
             z=z.dropna().sort_values('date'); z['symbol']=sym
             return sym,z,None
-        except Exception as e:
-            last=e; time.sleep(1.2*(k+1))
+        except BaseException as e:
+            last=e
+            # Back off aggressively on library rate-limit/SystemExit behavior.
+            time.sleep(15*(k+1))
     return sym,None,f'{type(last).__name__}:{last}'
 
+# Sequential retrieval is deliberate: GitHub-hosted IPs can be rate-limited at 20 requests/minute.
 frames=[]; errors=[]
-with ThreadPoolExecutor(max_workers=2) as pool:
-    futs={pool.submit(fetch_one,s):s for s in symbols}
-    for i,f in enumerate(as_completed(futs),1):
-        sym,z,e=f.result()
-        if z is not None: frames.append(z)
-        else: errors.append({'symbol':sym,'error':e})
-        if i%50==0: print('done',i,'/',len(symbols),flush=True)
+for i,sym0 in enumerate(symbols,1):
+    sym,z,e=fetch_one(sym0)
+    if z is not None: frames.append(z)
+    else: errors.append({'symbol':sym,'error':e})
+    if i%25==0:
+        print('done',i,'/',len(symbols),'ok',len(frames),'errors',len(errors),flush=True)
+        # persist retrieval status even if a later symbol/library call fails
+        pd.DataFrame(errors).to_csv(OUT/'price_errors_partial.csv',index=False)
+    time.sleep(REQUEST_PAUSE)
+
 pd.DataFrame(errors).to_csv(OUT/'price_errors.csv',index=False)
 if not frames: raise RuntimeError('No price data')
 px=pd.concat(frames,ignore_index=True).sort_values(['symbol','date'])
@@ -70,11 +76,9 @@ shock_cols=['AI_GPR','THREATS','ACTS']+(['GPR_ORIG'] if 'GPR_ORIG' in g.columns 
 for c in shock_cols:
     g[c]=pd.to_numeric(g[c],errors='coerce'); innov=np.log1p(g[c].clip(lower=0)).diff(); g[c+'_z']=(innov-innov.mean())/innov.std(ddof=0)
 
-# Five research directions/groupings requested by the thesis screen
 GROUPS=['HighLiab_TopTercile','CashConversionTrap','DoubleExposure_TopTercile','FragileLowMarginFunding','AssetCommitmentMismatch']
 p=px.merge(base[['symbol']+GROUPS],on='symbol',how='inner')
 
-# daily treated-minus-control abnormal-return spreads
 spread_rows=[]
 for grp in GROUPS:
     d=p.dropna(subset=['ar',grp]).copy(); d[grp]=pd.to_numeric(d[grp],errors='coerce')
@@ -95,7 +99,6 @@ for grp in GROUPS:
         rows.append({'group':grp,'shock':shock,'beta':float(fit.params[shock]),'p':float(fit.pvalues[shock]),'n':len(s),'status':'OK'})
 reg=pd.DataFrame(rows); reg.to_csv(OUT/'group_spread_regressions.csv',index=False)
 
-# Top 15 threat-innovation dates, separated by >=10 calendar days
 gg=g.dropna(subset=['THREATS_z']).sort_values('THREATS_z',ascending=False); events=[]
 for _,r0 in gg.iterrows():
     d=r0['date']
@@ -127,7 +130,6 @@ if not erc.empty:
         pool.append({'group':grp,'h':h,'mean_diff':z['diff'].mean(),'median_diff':z['diff'].median(),'events':len(z),'share_negative':(z['diff']<0).mean(),'mean_p':z['p'].mean()})
 pool=pd.DataFrame(pool); pool.to_csv(OUT/'event_car_summary.csv',index=False)
 
-# Compare directions 1-3 first; 4-5 remain in same output for final table
 DIRECTIONS=[
  ('1 Threat→HighLiab market anticipation','HighLiab_TopTercile','THREATS_z'),
  ('2 Acts→HighLiab realization','HighLiab_TopTercile','ACTS_z'),
@@ -138,7 +140,8 @@ DIRECTIONS=[
 rank=[]
 for name,grp,shock in DIRECTIONS:
     rr=reg[(reg.group==grp)&(reg.shock==shock)&(reg.status=='OK')]
-    if rr.empty: rank.append({'direction':name,'group':grp,'shock':shock,'beta_daily_spread':np.nan,'p_hac':np.nan,'event5_mean_diff':np.nan,'event5_share_negative':np.nan,'empirical_score':0}); continue
+    if rr.empty:
+        rank.append({'direction':name,'group':grp,'shock':shock,'beta_daily_spread':np.nan,'p_hac':np.nan,'event5_mean_diff':np.nan,'event5_share_negative':np.nan,'empirical_score':0}); continue
     rr=rr.iloc[0]; es=pool[(pool.group==grp)&(pool.h==5)] if not pool.empty else pd.DataFrame()
     md=float(es.mean_diff.iloc[0]) if not es.empty else np.nan; neg=float(es.share_negative.iloc[0]) if not es.empty else np.nan
     score=0
