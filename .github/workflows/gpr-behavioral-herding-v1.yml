@@ -1,0 +1,35 @@
+name: GPR behavioral herding v1
+
+on:
+  push:
+    paths:
+      - '.github/workflows/gpr-behavioral-herding-v1.yml'
+      - 'scripts/gpr_behavioral_herding_v1.py'
+      - 'data/gpr_market_top5/price_daily_2020_2025.parquet'
+      - 'data/gpr_market_top5/gpr_mapped_trading_daily.csv'
+      - 'data/gpr_market_top5/event_firm_metrics.csv'
+      - 'data/research_cohorts/vci578_behavioral_groups.csv'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install --upgrade pip 'pandas>=2.2,<3' 'numpy<2.3' pyarrow statsmodels scipy
+      - name: Run behavioral herding stage
+        run: python scripts/gpr_behavioral_herding_v1.py
+      - name: Commit behavioral outputs
+        if: always()
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/gpr_market_top5/behavioral_* || true
+          if git diff --cached --quiet; then echo 'No changes'; else git commit -m 'Add GPR behavioral herding outputs'; git push; fi
