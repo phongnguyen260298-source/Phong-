@@ -1,0 +1,5 @@
+{
+  "source_run_id": "34308238188",
+  "requested_at": "2026-09-09T04:45:00Z",
+  "purpose": "Merge all 7 successful v4.1 core artifacts, build coverage audit, schema catalog and semantic ID catalog"
+}
