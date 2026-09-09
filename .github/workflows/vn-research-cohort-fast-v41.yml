@@ -1,0 +1,196 @@
+name: VN Research Lake Cohort Fast v4.1
+
+on:
+  workflow_dispatch:
+    inputs:
+      workers:
+        description: "Concurrent symbol workers on one VNStock device"
+        required: true
+        default: "2"
+        type: string
+      chunk_size:
+        description: "Symbols per checkpoint artifact"
+        required: true
+        default: "100"
+        type: string
+      rpm:
+        description: "Top-level VNStock calls per minute target"
+        required: true
+        default: "100"
+        type: string
+  push:
+    branches: [main]
+    paths:
+      - ".github/dispatch/vn-research-cohort-fast-v41.json"
+
+permissions:
+  contents: read
+
+env:
+  VNSTOCK_API_KEY: ${{ secrets.VNSTOCK_API_KEY }}
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Resolve parameters
+        id: params
+        shell: bash
+        env:
+          INPUT_WORKERS: ${{ inputs.workers }}
+          INPUT_CHUNK_SIZE: ${{ inputs.chunk_size }}
+          INPUT_RPM: ${{ inputs.rpm }}
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          if os.environ.get("GITHUB_EVENT_NAME") == "workflow_dispatch":
+              workers=int(os.environ.get("INPUT_WORKERS") or 2)
+              chunk=int(os.environ.get("INPUT_CHUNK_SIZE") or 100)
+              rpm=int(os.environ.get("INPUT_RPM") or 100)
+          else:
+              cfg=json.loads(Path('.github/dispatch/vn-research-cohort-fast-v41.json').read_text())
+              workers=int(cfg.get('workers',2)); chunk=int(cfg.get('chunk_size',100)); rpm=int(cfg.get('rpm',100))
+          if not 1 <= workers <= 4: raise SystemExit('workers must be 1..4')
+          if not 50 <= chunk <= 150: raise SystemExit('chunk_size must be 50..150')
+          if not 60 <= rpm <= 130: raise SystemExit('rpm must be 60..130')
+          with open(os.environ['GITHUB_OUTPUT'],'a') as f:
+              print(f'workers={workers}',file=f); print(f'chunk_size={chunk}',file=f); print(f'rpm={rpm}',file=f)
+          print({'workers':workers,'chunk_size':chunk,'rpm':rpm})
+          PY
+
+      - name: Install VNStock Sponsor once
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$VNSTOCK_API_KEY"
+          VENV_PATH="$RUNNER_TEMP/vnstock-venv"
+          python -m pip install --upgrade pip requests setuptools wheel
+          wget -q https://vnstocks.com/files/vnstock-cli-installer.run -O installer.run
+          chmod +x installer.run
+          ./installer.run -- --non-interactive --api-key "$VNSTOCK_API_KEY" --venv-path "$VENV_PATH" --language en
+          "$VENV_PATH/bin/python" -m ensurepip --upgrade
+          "$VENV_PATH/bin/python" -m pip install "pandas>=2.2,<3" "numpy>=2.0,<2.3" pyarrow openpyxl requests
+
+      - name: Build anchored HOSE-HNX cohorts
+        shell: bash
+        run: |
+          VENV_PATH="$RUNNER_TEMP/vnstock-venv"
+          "$VENV_PATH/bin/python" scripts/vn_research_cohort_v4.py --out output/cohort
+
+      - name: Upload cohort snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: vn-research-cohort-v41
+          path: output/cohort/
+          retention-days: 90
+
+      - name: Extract chunk 0
+        continue-on-error: true
+        shell: bash
+        run: |
+          VENV_PATH="$RUNNER_TEMP/vnstock-venv"; "$VENV_PATH/bin/python" scripts/vn_research_lake_v4_fast.py --cohort-file output/cohort/cohort_union.csv --chunk-index 0 --chunk-size "${{ steps.params.outputs.chunk_size }}" --workers "${{ steps.params.outputs.workers }}" --rpm "${{ steps.params.outputs.rpm }}" --out output/core/chunk_0
+      - name: Upload chunk 0
+        if: always()
+        uses: actions/upload-artifact@v4
+        with: {name: vn-research-v41-core-c0, path: output/core/chunk_0/, if-no-files-found: warn, retention-days: 90, compression-level: 6}
+
+      - name: Extract chunk 1
+        continue-on-error: true
+        shell: bash
+        run: |
+          VENV_PATH="$RUNNER_TEMP/vnstock-venv"; "$VENV_PATH/bin/python" scripts/vn_research_lake_v4_fast.py --cohort-file output/cohort/cohort_union.csv --chunk-index 1 --chunk-size "${{ steps.params.outputs.chunk_size }}" --workers "${{ steps.params.outputs.workers }}" --rpm "${{ steps.params.outputs.rpm }}" --out output/core/chunk_1
+      - name: Upload chunk 1
+        if: always()
+        uses: actions/upload-artifact@v4
+        with: {name: vn-research-v41-core-c1, path: output/core/chunk_1/, if-no-files-found: warn, retention-days: 90, compression-level: 6}
+
+      - name: Extract chunk 2
+        continue-on-error: true
+        shell: bash
+        run: |
+          VENV_PATH="$RUNNER_TEMP/vnstock-venv"; "$VENV_PATH/bin/python" scripts/vn_research_lake_v4_fast.py --cohort-file output/cohort/cohort_union.csv --chunk-index 2 --chunk-size "${{ steps.params.outputs.chunk_size }}" --workers "${{ steps.params.outputs.workers }}" --rpm "${{ steps.params.outputs.rpm }}" --out output/core/chunk_2
+      - name: Upload chunk 2
+        if: always()
+        uses: actions/upload-artifact@v4
+        with: {name: vn-research-v41-core-c2, path: output/core/chunk_2/, if-no-files-found: warn, retention-days: 90, compression-level: 6}
+
+      - name: Extract chunk 3
+        continue-on-error: true
+        shell: bash
+        run: |
+          VENV_PATH="$RUNNER_TEMP/vnstock-venv"; "$VENV_PATH/bin/python" scripts/vn_research_lake_v4_fast.py --cohort-file output/cohort/cohort_union.csv --chunk-index 3 --chunk-size "${{ steps.params.outputs.chunk_size }}" --workers "${{ steps.params.outputs.workers }}" --rpm "${{ steps.params.outputs.rpm }}" --out output/core/chunk_3
+      - name: Upload chunk 3
+        if: always()
+        uses: actions/upload-artifact@v4
+        with: {name: vn-research-v41-core-c3, path: output/core/chunk_3/, if-no-files-found: warn, retention-days: 90, compression-level: 6}
+
+      - name: Extract chunk 4
+        continue-on-error: true
+        shell: bash
+        run: |
+          VENV_PATH="$RUNNER_TEMP/vnstock-venv"; "$VENV_PATH/bin/python" scripts/vn_research_lake_v4_fast.py --cohort-file output/cohort/cohort_union.csv --chunk-index 4 --chunk-size "${{ steps.params.outputs.chunk_size }}" --workers "${{ steps.params.outputs.workers }}" --rpm "${{ steps.params.outputs.rpm }}" --out output/core/chunk_4
+      - name: Upload chunk 4
+        if: always()
+        uses: actions/upload-artifact@v4
+        with: {name: vn-research-v41-core-c4, path: output/core/chunk_4/, if-no-files-found: warn, retention-days: 90, compression-level: 6}
+
+      - name: Extract chunk 5
+        continue-on-error: true
+        shell: bash
+        run: |
+          VENV_PATH="$RUNNER_TEMP/vnstock-venv"; "$VENV_PATH/bin/python" scripts/vn_research_lake_v4_fast.py --cohort-file output/cohort/cohort_union.csv --chunk-index 5 --chunk-size "${{ steps.params.outputs.chunk_size }}" --workers "${{ steps.params.outputs.workers }}" --rpm "${{ steps.params.outputs.rpm }}" --out output/core/chunk_5
+      - name: Upload chunk 5
+        if: always()
+        uses: actions/upload-artifact@v4
+        with: {name: vn-research-v41-core-c5, path: output/core/chunk_5/, if-no-files-found: warn, retention-days: 90, compression-level: 6}
+
+      - name: Extract chunk 6
+        continue-on-error: true
+        shell: bash
+        run: |
+          VENV_PATH="$RUNNER_TEMP/vnstock-venv"; "$VENV_PATH/bin/python" scripts/vn_research_lake_v4_fast.py --cohort-file output/cohort/cohort_union.csv --chunk-index 6 --chunk-size "${{ steps.params.outputs.chunk_size }}" --workers "${{ steps.params.outputs.workers }}" --rpm "${{ steps.params.outputs.rpm }}" --out output/core/chunk_6
+      - name: Upload chunk 6
+        if: always()
+        uses: actions/upload-artifact@v4
+        with: {name: vn-research-v41-core-c6, path: output/core/chunk_6/, if-no-files-found: warn, retention-days: 90, compression-level: 6}
+
+      - name: Final aggregate QC
+        if: always()
+        shell: bash
+        run: |
+          VENV_PATH="$RUNNER_TEMP/vnstock-venv"
+          "$VENV_PATH/bin/python" - <<'PY'
+          import json
+          from pathlib import Path
+          import pandas as pd
+          rows=[]; errs=[]
+          for p in sorted(Path('output/core').glob('chunk_*')):
+              sp=p/'run_summary.json'
+              if sp.exists(): rows.append(json.loads(sp.read_text()))
+              ep=p/'errors.csv'
+              if ep.exists():
+                  try:
+                      e=pd.read_csv(ep)
+                      if len(e): errs.append(e)
+                  except Exception: pass
+          out=Path('output/final_qc'); out.mkdir(parents=True,exist_ok=True)
+          pd.DataFrame(rows).to_csv(out/'chunk_summaries.csv',index=False)
+          if errs: pd.concat(errs,ignore_index=True).to_csv(out/'all_errors.csv',index=False)
+          summary={'chunks_completed':len(rows),'symbols_processed':int(sum(x.get('symbols_n',0) for x in rows)),'manifest_rows':int(sum(x.get('manifest_rows',0) for x in rows)),'errors':int(sum(x.get('errors',0) for x in rows)),'elapsed_seconds_sum':float(sum(x.get('elapsed_seconds',0) for x in rows))}
+          (out/'summary.json').write_text(json.dumps(summary,indent=2)); print(summary)
+          PY
+
+      - name: Upload final QC
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vn-research-v41-final-qc
+          path: output/final_qc/
+          retention-days: 90
