@@ -30,7 +30,7 @@ jobs:
         run: |
           mkdir -p input/vci42
           gh run download 34329813990 -n vn-research-v42-vci-full -D input/vci42
-      - name: Hotfix generic VCI cash-flow labels
+      - name: Hotfix VCI labels and exposure
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -38,8 +38,11 @@ jobs:
           s=p.read_text()
           old="""def match(name, keys):\n    z=normtxt(name)\n    for k in keys:\n"""
           new="""def match(name, keys):\n    z=normtxt(name)\n    if 'cfo' in keys and ('luu chuyen tien' in z or 'dong tien' in z) and ('kinh doanh' in z or 'hdkd' in z or 'hoat dong kd' in z) and ('thuan' in z or 'rong' in z): return 'cfo'\n    if 'capex' in keys and ('mua sam' in z or 'mua' in z) and ('tscd' in z or 'tai san co dinh' in z or 'tai san dai han' in z) and ('chi' in z or 'tien' in z): return 'capex'\n    for k in keys:\n"""
-          if old not in s: raise SystemExit('patch target not found')
-          p.write_text(s.replace(old,new))
+          if old in s:
+              s=s.replace(old,new)
+          s=s.replace("pre['fixed_exp']=pre.fixed_assets/pre.assets;", "pre['fixed_exp']=pre['capex'].abs()/pre.assets;")
+          s=s.replace("('CAPEX_ASSETS','capex_assets','fixed_exp')", "('CAPEX_ASSETS','capex_assets','fixed_exp')")
+          p.write_text(s)
           PY
       - name: Run 20-pair screen
         run: python scripts/vci_xy_screen_v1.py
