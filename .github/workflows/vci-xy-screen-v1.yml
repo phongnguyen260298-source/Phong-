@@ -1,0 +1,43 @@
+name: VCI v4.2 X-Y Screen v1
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/vci-xy-screen-v1.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  screen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install analysis dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pandas numpy scipy statsmodels linearmodels pyarrow openpyxl
+      - name: Download VCI v4.2 artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p input/vci42
+          gh run download 34329813990 -n vn-research-v42-vci-full -D input/vci42
+          find input/vci42 -maxdepth 2 -type f | head -30
+      - name: Run 20-pair screen
+        run: python scripts/vci_xy_screen_v1.py
+      - name: Upload screening pack
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vci-v42-xy-screen-v1
+          path: output/xy_screen/
+          retention-days: 90
+          compression-level: 6
