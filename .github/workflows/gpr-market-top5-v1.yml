@@ -14,7 +14,7 @@ permissions:
 jobs:
   run:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     env:
       VNSTOCK_API_KEY: ${{ secrets.VNSTOCK_API_KEY }}
     steps:
@@ -37,14 +37,16 @@ jobs:
         run: |
           VENV_PATH="$RUNNER_TEMP/vnstock-venv"
           "$VENV_PATH/bin/python" scripts/gpr_market_top5_v1.py
-      - name: Commit outputs
+      - name: Commit outputs even after partial failure
+        if: always()
         shell: bash
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add data/gpr_market_top5/
+          git add data/gpr_market_top5/ || true
           if git diff --cached --quiet; then echo 'No changes'; else git commit -m 'Add GPR market Top5 screening outputs'; git push; fi
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: gpr-market-top5-v1
           path: data/gpr_market_top5/
