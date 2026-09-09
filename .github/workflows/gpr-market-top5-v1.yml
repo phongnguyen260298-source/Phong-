@@ -6,6 +6,7 @@ on:
       - '.github/workflows/gpr-market-top5-v1.yml'
       - 'scripts/gpr_market_top5_v1.py'
       - 'data/research_cohorts/vci578_preexposure.csv'
+      - 'data/research_cohorts/vci578_behavioral_groups.csv'
   workflow_dispatch:
 
 permissions:
@@ -15,28 +16,19 @@ jobs:
   run:
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    env:
-      VNSTOCK_API_KEY: ${{ secrets.VNSTOCK_API_KEY }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Install VNStock Bronze
+      - name: Install analysis dependencies
         shell: bash
         run: |
-          VENV_PATH="$RUNNER_TEMP/vnstock-venv"
-          python -m pip install --upgrade pip requests setuptools wheel
-          wget -q https://vnstocks.com/files/vnstock-cli-installer.run -O installer.run
-          chmod +x installer.run
-          ./installer.run -- --non-interactive --api-key "$VNSTOCK_API_KEY" --venv-path "$VENV_PATH" --language en
-          "$VENV_PATH/bin/python" -m ensurepip --upgrade
-          "$VENV_PATH/bin/python" -m pip install 'pandas>=2.2,<3' 'numpy<2.3' pyarrow statsmodels scipy requests
+          python -m pip install --upgrade pip
+          python -m pip install 'pandas>=2.2,<3' 'numpy<2.3' pyarrow statsmodels scipy requests
       - name: Run Top5 market/event screening
         shell: bash
-        run: |
-          VENV_PATH="$RUNNER_TEMP/vnstock-venv"
-          "$VENV_PATH/bin/python" scripts/gpr_market_top5_v1.py
+        run: python scripts/gpr_market_top5_v1.py
       - name: Commit outputs even after partial failure
         if: always()
         shell: bash
