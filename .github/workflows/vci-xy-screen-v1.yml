@@ -30,7 +30,7 @@ jobs:
         run: |
           mkdir -p input/vci42
           gh run download 34329813990 -n vn-research-v42-vci-full -D input/vci42
-      - name: Hotfix VCI labels and exposure
+      - name: Hotfix VCI labels, exposure, and official GPR columns
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -41,7 +41,10 @@ jobs:
           if old in s:
               s=s.replace(old,new)
           s=s.replace("pre['fixed_exp']=pre.fixed_assets/pre.assets;", "pre['fixed_exp']=pre['capex'].abs()/pre.assets;")
-          s=s.replace("('CAPEX_ASSETS','capex_assets','fixed_exp')", "('CAPEX_ASSETS','capex_assets','fixed_exp')")
+          start=s.index("shock_cols={")
+          end=s.index("if any(v is None", start)
+          fixed="""shock_cols={\n'AI_GPR':'GPR_AI',\n'GPR_AER':'GPR_AER',\n'GPR_THREATS':'THREATS_GPR_AI',\n'GPR_ACTS':'ACTS_GPR_AI'}\n"""
+          s=s[:start]+fixed+s[end:]
           p.write_text(s)
           PY
       - name: Run 20-pair screen
