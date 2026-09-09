@@ -1,5 +1,5 @@
 {
-  "mode": "pilot",
-  "requested_at": "2026-09-09T07:43:00Z",
-  "purpose": "Run VCI-first pilot for BS/IS/CF/Ratio coverage comparison before full 614-symbol backfill"
+  "mode": "full",
+  "requested_at": "2026-09-09T08:20:00Z",
+  "purpose": "Run full VCI-first backfill for BS/IS/CF/Ratio across the 614-symbol HOSE-HNX cohort after successful pilot"
 }
