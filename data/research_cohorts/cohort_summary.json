@@ -1,0 +1,19 @@
+{
+  "universe_total": 1658,
+  "base_exchanges": [
+    "HOSE",
+    "HNX"
+  ],
+  "long_anchor": "2013-12-31",
+  "long_data_window": "2014-01-01/2025-12-31",
+  "long_n": 442,
+  "modern_anchor": "2019-12-31",
+  "modern_data_window": "2020-01-01/2025-12-31",
+  "modern_n": 586,
+  "union_n": 614,
+  "overlap_n": 414,
+  "long_only_n": 28,
+  "modern_only_n": 172,
+  "transfer_audit_n": 84,
+  "selection_note": "Conservative anchor cohorts based on current/known HOSE-HNX exchange metadata and listing interval. Transfer-history cases are flagged for audit; no current-survivor requirement."
+}
