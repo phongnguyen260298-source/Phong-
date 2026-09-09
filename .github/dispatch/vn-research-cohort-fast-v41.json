@@ -1,0 +1,7 @@
+{
+  "workers": 2,
+  "chunk_size": 100,
+  "rpm": 100,
+  "requested_at": "2026-09-09T03:42:00Z",
+  "purpose": "Run HOSE-HNX anchored cohort extraction with correct Market v3 OHLCV API and Bronze-safe throttling"
+}
