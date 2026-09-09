@@ -44,7 +44,7 @@ jobs:
         env:
           SHARD: ${{ matrix.shard }}
           N_SHARDS: 20
-          REQUEST_PAUSE: 2.5
+          REQUEST_PAUSE: 3.3
         run: python scripts/gpr_market_top5_fetch_shard.py
       - uses: actions/upload-artifact@v4
         if: always()
