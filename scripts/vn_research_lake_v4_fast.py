@@ -3,7 +3,9 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import threading
 import time
+from collections import deque
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
@@ -14,6 +16,45 @@ LOOKBACK_START = "2013-01-01"
 TARGET_END = "2025-12-31"
 START_YEAR = 2013
 END_YEAR = 2025
+
+
+class SlidingRateLimiter:
+    """Process-wide limiter for top-level VNStock calls.
+
+    Bronze is currently 180 requests/minute. We intentionally target below that
+    because one high-level vnstock_data call can internally trigger more than
+    one provider request. The limiter is shared by all symbol workers.
+    """
+
+    def __init__(self, max_calls: int = 100, window_seconds: float = 60.0):
+        self.max_calls = max(1, int(max_calls))
+        self.window = float(window_seconds)
+        self.calls = deque()
+        self.lock = threading.Lock()
+        self.blocked_until = 0.0
+
+    def wait(self):
+        while True:
+            with self.lock:
+                now = time.monotonic()
+                if now < self.blocked_until:
+                    wait_for = self.blocked_until - now
+                else:
+                    cutoff = now - self.window
+                    while self.calls and self.calls[0] <= cutoff:
+                        self.calls.popleft()
+                    if len(self.calls) < self.max_calls:
+                        self.calls.append(now)
+                        return
+                    wait_for = max(0.05, self.calls[0] + self.window - now)
+            time.sleep(min(wait_for, 2.0))
+
+    def cooldown(self, seconds: float = 65.0):
+        with self.lock:
+            self.blocked_until = max(self.blocked_until, time.monotonic() + seconds)
+
+
+LIMITER: SlidingRateLimiter | None = None
 
 
 def parse_year(v):
@@ -28,16 +69,32 @@ def filter_finance(df):
     return df[years.notna() & years.between(START_YEAR, END_YEAR)].copy()
 
 
+def _looks_rate_limited(exc) -> bool:
+    s = str(exc).lower()
+    return "rate limit" in s or "180/180" in s or "requests/phút" in s or "requests/min" in s
+
+
 def retry(fn, label, attempts=4):
     last = None
     for k in range(attempts):
         try:
+            if LIMITER is not None:
+                LIMITER.wait()
             return fn()
+        except SystemExit as exc:
+            # vnstock_data may terminate the current call when its server-side
+            # minute quota is reached. Convert that into a recoverable retry.
+            last = RuntimeError(f"VNStock SystemExit during {label}: {exc}")
+            if LIMITER is not None:
+                LIMITER.cooldown(65)
+            print(f"[retry {k+1}/{attempts}] {label}: SystemExit: {exc}", flush=True)
         except Exception as exc:
             last = exc
+            if _looks_rate_limited(exc) and LIMITER is not None:
+                LIMITER.cooldown(65)
             print(f"[retry {k+1}/{attempts}] {label}: {type(exc).__name__}: {exc}", flush=True)
-            if k + 1 < attempts:
-                time.sleep(min(10.0, 1.25 * (2 ** k)))
+        if k + 1 < attempts:
+            time.sleep(min(12.0, 1.5 * (2 ** k)))
     raise last
 
 
@@ -83,6 +140,20 @@ def fundamental_report(eq, report):
     raise last
 
 
+def manifest_row(symbol, dataset, rows, source, df):
+    f, l, n = coverage(df)
+    return {
+        "symbol": symbol,
+        "dataset": dataset,
+        "rows": rows,
+        "status": "OK" if rows else "EMPTY",
+        "source": source,
+        "first_period": f,
+        "last_period": l,
+        "period_count": n,
+    }
+
+
 def extract_symbol(symbol: str, root: Path):
     manifest = []
     errors = []
@@ -98,25 +169,25 @@ def extract_symbol(symbol: str, root: Path):
             df = retry(lambda r=report: fundamental_report(eq, r), f"{symbol}:{report}")
             df = filter_finance(df)
             rows = save_df(df, root / "fundamental_quarterly" / report / f"{symbol}.parquet", "Fundamental")
-            f, l, n = coverage(df)
-            manifest.append({"symbol": symbol, "dataset": dataset, "rows": rows, "status": "OK" if rows else "EMPTY",
-                             "source": "Fundamental", "first_period": f, "last_period": l, "period_count": n})
+            manifest.append(manifest_row(symbol, dataset, rows, "Fundamental", df))
         except Exception as exc:
             errors.append({"symbol": symbol, "dataset": dataset, "error_type": type(exc).__name__, "error": str(exc)})
 
+    # Current vnstock_data Market v3 API: Market().equity(symbol).ohlcv(...).
+    # Market().quote(symbols_list) is only for current multi-symbol quote snapshots.
     try:
-        def get_price():
-            return Market().quote(symbol=symbol).history(start=LOOKBACK_START, end=TARGET_END, interval="1D")
-        px = retry(get_price, f"{symbol}:price", attempts=3)
+        px = retry(
+            lambda: Market().equity(symbol).ohlcv(start=LOOKBACK_START, end=TARGET_END, interval="1D"),
+            f"{symbol}:price",
+            attempts=3,
+        )
         if px is not None and not px.empty:
             tc = next((c for c in ("time", "date", "trading_date") if c in px.columns), None)
             if tc:
                 d = pd.to_datetime(px[tc], errors="coerce")
                 px = px[d.between(pd.Timestamp(LOOKBACK_START), pd.Timestamp(TARGET_END))].copy()
-        rows = save_df(px, root / "price_daily" / f"{symbol}.parquet", "Market")
-        f, l, n = coverage(px)
-        manifest.append({"symbol": symbol, "dataset": "price_daily", "rows": rows, "status": "OK" if rows else "EMPTY",
-                         "source": "Market", "first_period": f, "last_period": l, "period_count": n})
+        rows = save_df(px, root / "price_daily" / f"{symbol}.parquet", "Market.equity.ohlcv")
+        manifest.append(manifest_row(symbol, "price_daily", rows, "Market.equity.ohlcv", px))
     except Exception as exc:
         errors.append({"symbol": symbol, "dataset": "price_daily", "error_type": type(exc).__name__, "error": str(exc)})
 
@@ -132,13 +203,18 @@ def extract_symbol(symbol: str, root: Path):
 
 
 def main():
+    global LIMITER
+
     p = argparse.ArgumentParser()
     p.add_argument("--cohort-file", required=True)
     p.add_argument("--chunk-index", type=int, required=True)
     p.add_argument("--chunk-size", type=int, default=100)
-    p.add_argument("--workers", type=int, default=8)
+    p.add_argument("--workers", type=int, default=2)
+    p.add_argument("--rpm", type=int, default=100)
     p.add_argument("--out", required=True)
     args = p.parse_args()
+
+    LIMITER = SlidingRateLimiter(args.rpm, 60.0)
 
     cohort = pd.read_csv(args.cohort_file)
     symbols = cohort["symbol"].dropna().astype(str).str.upper().drop_duplicates().sort_values().tolist()
@@ -149,7 +225,7 @@ def main():
 
     manifest, errors = [], []
     t0 = time.time()
-    print(f"chunk={args.chunk_index} symbols={len(selected)} workers={args.workers}", flush=True)
+    print(f"chunk={args.chunk_index} symbols={len(selected)} workers={args.workers} target_rpm={args.rpm}", flush=True)
 
     with ThreadPoolExecutor(max_workers=args.workers) as pool:
         futs = {pool.submit(extract_symbol, s, root): s for s in selected}
@@ -160,7 +236,8 @@ def main():
                 mf, er = fut.result()
                 manifest.extend(mf)
                 errors.extend(er)
-            except Exception as exc:
+            except BaseException as exc:
+                # Preserve progress if a provider raises SystemExit inside a worker.
                 errors.append({"symbol": s, "dataset": "worker", "error_type": type(exc).__name__, "error": str(exc)})
             done += 1
             print(f"[{done}/{len(selected)}] {s}", flush=True)
@@ -168,10 +245,11 @@ def main():
     pd.DataFrame(manifest).to_csv(root / "manifest.csv", index=False, encoding="utf-8-sig")
     pd.DataFrame(errors).to_csv(root / "errors.csv", index=False, encoding="utf-8-sig")
     summary = {
-        "version": "v4-fast",
+        "version": "v4.1-fast",
         "chunk_index": args.chunk_index,
         "chunk_size": args.chunk_size,
         "workers": args.workers,
+        "target_top_level_rpm": args.rpm,
         "symbols_n": len(selected),
         "symbols": selected,
         "manifest_rows": len(manifest),
