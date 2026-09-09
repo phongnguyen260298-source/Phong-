@@ -27,6 +27,8 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install vnstock 'pandas>=2.2,<3' 'numpy<2.3' pyarrow statsmodels scipy requests
           sed -i 's/from vnstock_data import Market/from vnstock import Market/' scripts/gpr_market_top5_v2.py
+          sed -i 's/ThreadPoolExecutor(max_workers=2)/ThreadPoolExecutor(max_workers=1)/' scripts/gpr_market_top5_v2.py
+          sed -i "s/if i%50==0: print('done',i,'\/',len(symbols),flush=True)/if i%50==0: print('done',i,'\/',len(symbols),flush=True); time.sleep(3.5)/" scripts/gpr_market_top5_v2.py
       - name: Run robust Top5 market/event screening
         shell: bash
         run: |
