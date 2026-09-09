@@ -1,0 +1,54 @@
+name: GPR market Top5 v2
+
+on:
+  push:
+    paths:
+      - '.github/workflows/gpr-market-top5-v2.yml'
+      - 'scripts/gpr_market_top5_v2.py'
+      - 'data/research_cohorts/vci578_preexposure.csv'
+      - 'data/research_cohorts/vci578_behavioral_groups.csv'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      VNSTOCK_API_KEY: ${{ secrets.VNSTOCK_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install VNStock Bronze
+        shell: bash
+        run: |
+          VENV_PATH="$RUNNER_TEMP/vnstock-venv"
+          python -m pip install --upgrade pip requests setuptools wheel
+          wget -q https://vnstocks.com/files/vnstock-cli-installer.run -O installer.run
+          chmod +x installer.run
+          ./installer.run -- --non-interactive --api-key "$VNSTOCK_API_KEY" --venv-path "$VENV_PATH" --language en
+          "$VENV_PATH/bin/python" -m ensurepip --upgrade
+          "$VENV_PATH/bin/python" -m pip install 'pandas>=2.2,<3' 'numpy<2.3' pyarrow statsmodels scipy requests
+      - name: Run robust Top5 market/event screening
+        shell: bash
+        run: |
+          VENV_PATH="$RUNNER_TEMP/vnstock-venv"
+          "$VENV_PATH/bin/python" scripts/gpr_market_top5_v2.py
+      - name: Commit outputs
+        if: always()
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/gpr_market_top5_v2/ || true
+          if git diff --cached --quiet; then echo 'No changes'; else git commit -m 'Add GPR market Top5 v2 outputs'; git push; fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: gpr-market-top5-v2
+          path: data/gpr_market_top5_v2/
+          retention-days: 30
