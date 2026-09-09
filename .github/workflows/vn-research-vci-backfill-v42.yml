@@ -1,0 +1,152 @@
+name: VN Research VCI Backfill v4.2
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "pilot or full"
+        required: true
+        default: "pilot"
+        type: string
+  push:
+    branches: [main]
+    paths:
+      - ".github/dispatch/vn-research-vci-backfill-v42.json"
+
+permissions:
+  contents: read
+
+env:
+  VNSTOCK_API_KEY: ${{ secrets.VNSTOCK_API_KEY }}
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Resolve mode
+        id: params
+        shell: bash
+        env:
+          INPUT_MODE: ${{ inputs.mode }}
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          if os.environ.get('GITHUB_EVENT_NAME') == 'workflow_dispatch':
+              mode = (os.environ.get('INPUT_MODE') or 'pilot').strip().lower()
+          else:
+              cfg = json.loads(Path('.github/dispatch/vn-research-vci-backfill-v42.json').read_text())
+              mode = str(cfg.get('mode','pilot')).strip().lower()
+          if mode not in {'pilot','full'}:
+              raise SystemExit('mode must be pilot or full')
+          with open(os.environ['GITHUB_OUTPUT'],'a') as f:
+              print(f'mode={mode}', file=f)
+          print({'mode': mode})
+          PY
+
+      - name: Install VNStock Sponsor once
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$VNSTOCK_API_KEY"
+          VENV_PATH="$RUNNER_TEMP/vnstock-venv"
+          python -m pip install --upgrade pip requests setuptools wheel
+          wget -q https://vnstocks.com/files/vnstock-cli-installer.run -O installer.run
+          chmod +x installer.run
+          ./installer.run -- --non-interactive --api-key "$VNSTOCK_API_KEY" --venv-path "$VENV_PATH" --language en
+          "$VENV_PATH/bin/python" -m ensurepip --upgrade
+          "$VENV_PATH/bin/python" -m pip install "pandas>=2.2,<3" "numpy>=2.0,<2.3" pyarrow openpyxl requests
+
+      - name: Build anchored HOSE-HNX cohorts
+        shell: bash
+        run: |
+          VENV_PATH="$RUNNER_TEMP/vnstock-venv"
+          "$VENV_PATH/bin/python" scripts/vn_research_cohort_v4.py --out output/cohort
+
+      - name: Pilot VCI priority
+        if: steps.params.outputs.mode == 'pilot'
+        shell: bash
+        run: |
+          VENV_PATH="$RUNNER_TEMP/vnstock-venv"
+          "$VENV_PATH/bin/python" scripts/vn_research_fundamental_v42_vci.py \
+            --cohort-file output/cohort/cohort_union.csv \
+            --symbols "FPT,HPG,VNM,ANV,TCB,BID,ACB,SSI,VCI,HCM,BVH,BMI,KLS,ALP" \
+            --period quarter --workers 2 --rpm 90 \
+            --out output/v42/pilot
+
+      - name: Upload pilot
+        if: steps.params.outputs.mode == 'pilot'
+        uses: actions/upload-artifact@v4
+        with:
+          name: vn-research-v42-vci-pilot
+          path: output/v42/pilot/
+          retention-days: 90
+
+      - name: Full VCI priority chunks
+        if: steps.params.outputs.mode == 'full'
+        shell: bash
+        run: |
+          set -euo pipefail
+          VENV_PATH="$RUNNER_TEMP/vnstock-venv"
+          for c in 0 1 2 3 4 5 6; do
+            "$VENV_PATH/bin/python" scripts/vn_research_fundamental_v42_vci.py \
+              --cohort-file output/cohort/cohort_union.csv \
+              --chunk-index "$c" --chunk-size 100 \
+              --period quarter --workers 2 --rpm 90 \
+              --out "output/v42/chunk_$c"
+          done
+
+      - name: Aggregate full QC
+        if: steps.params.outputs.mode == 'full'
+        shell: bash
+        run: |
+          VENV_PATH="$RUNNER_TEMP/vnstock-venv"
+          "$VENV_PATH/bin/python" - <<'PY'
+          import json
+          from pathlib import Path
+          import pandas as pd
+          roots = sorted(Path('output/v42').glob('chunk_*'))
+          m=[]; e=[]; s=[]
+          for r in roots:
+              mp=r/'manifest.csv'; ep=r/'errors.csv'; sp=r/'run_summary.json'
+              if mp.exists(): m.append(pd.read_csv(mp))
+              if ep.exists():
+                  try:
+                      x=pd.read_csv(ep)
+                      if len(x): e.append(x)
+                  except Exception: pass
+              if sp.exists(): s.append(json.loads(sp.read_text()))
+          out=Path('output/v42/final'); out.mkdir(parents=True, exist_ok=True)
+          manifest=pd.concat(m, ignore_index=True) if m else pd.DataFrame()
+          errors=pd.concat(e, ignore_index=True) if e else pd.DataFrame()
+          manifest.to_csv(out/'master_manifest.csv', index=False)
+          errors.to_csv(out/'all_errors.csv', index=False)
+          if len(manifest):
+              manifest.groupby(['report','source_selected','status'], dropna=False).size().reset_index(name='n').to_csv(out/'source_coverage.csv', index=False)
+          summary={
+              'chunks': len(s),
+              'symbols_expected': 614,
+              'manifest_rows': int(len(manifest)),
+              'errors': int(len(errors)),
+              'vci_selected': int((manifest.get('source_selected')=='VCI').sum()) if len(manifest) else 0,
+              'mas_fallback_selected': int((manifest.get('source_selected')=='MAS').sum()) if len(manifest) else 0,
+          }
+          (out/'summary.json').write_text(json.dumps(summary, indent=2))
+          print(summary)
+          PY
+
+      - name: Upload full VCI backfill
+        if: steps.params.outputs.mode == 'full'
+        uses: actions/upload-artifact@v4
+        with:
+          name: vn-research-v42-vci-full
+          path: output/v42/
+          retention-days: 90
+          compression-level: 6
