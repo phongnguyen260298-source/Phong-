@@ -1,0 +1,5 @@
+{
+  "mode": "pilot",
+  "requested_at": "2026-09-09T07:43:00Z",
+  "purpose": "Run VCI-first pilot for BS/IS/CF/Ratio coverage comparison before full 614-symbol backfill"
+}
