@@ -1,0 +1,6 @@
+direction,group,shock,beta_daily_spread,p_hac,event5_mean_diff,event5_share_negative,empirical_score
+1 Threat→HighLiab market anticipation,HighLiab_TopTercile,THREATS_z,,,,,0
+2 Acts→HighLiab realization,HighLiab_TopTercile,ACTS_z,,,,,0
+3 Acts→CashConversionTrap,CashConversionTrap,ACTS_z,,,,,0
+4 Threat→DoubleExposure,DoubleExposure_TopTercile,THREATS_z,,,,,0
+5 Threat→AssetCommitmentMismatch,AssetCommitmentMismatch,THREATS_z,,,,,0

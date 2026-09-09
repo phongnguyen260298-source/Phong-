@@ -1,0 +1,65 @@
+{
+  "price_shards": 10,
+  "symbols_target": 378,
+  "symbols_price_ok": 378,
+  "price_rows": 37776,
+  "errors": 0,
+  "gpr_cols": {
+    "ai": "GPR_AI",
+    "original": "GPR_AER",
+    "threats": "THREATS_GPR_AI",
+    "acts": "ACTS_GPR_AI"
+  },
+  "top5": [
+    {
+      "direction": "1 Threat→HighLiab market anticipation",
+      "group": "HighLiab_TopTercile",
+      "shock": "THREATS_z",
+      "beta_daily_spread": null,
+      "p_hac": null,
+      "event5_mean_diff": null,
+      "event5_share_negative": null,
+      "empirical_score": 0
+    },
+    {
+      "direction": "2 Acts→HighLiab realization",
+      "group": "HighLiab_TopTercile",
+      "shock": "ACTS_z",
+      "beta_daily_spread": null,
+      "p_hac": null,
+      "event5_mean_diff": null,
+      "event5_share_negative": null,
+      "empirical_score": 0
+    },
+    {
+      "direction": "3 Acts→CashConversionTrap",
+      "group": "CashConversionTrap",
+      "shock": "ACTS_z",
+      "beta_daily_spread": null,
+      "p_hac": null,
+      "event5_mean_diff": null,
+      "event5_share_negative": null,
+      "empirical_score": 0
+    },
+    {
+      "direction": "4 Threat→DoubleExposure",
+      "group": "DoubleExposure_TopTercile",
+      "shock": "THREATS_z",
+      "beta_daily_spread": null,
+      "p_hac": null,
+      "event5_mean_diff": null,
+      "event5_share_negative": null,
+      "empirical_score": 0
+    },
+    {
+      "direction": "5 Threat→AssetCommitmentMismatch",
+      "group": "AssetCommitmentMismatch",
+      "shock": "THREATS_z",
+      "beta_daily_spread": null,
+      "p_hac": null,
+      "event5_mean_diff": null,
+      "event5_share_negative": null,
+      "empirical_score": 0
+    }
+  ]
+}
