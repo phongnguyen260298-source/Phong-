@@ -1,0 +1,38 @@
+name: GPR market Top5 KBS fallback
+
+on:
+  push:
+    paths:
+      - '.github/workflows/gpr-market-top5-kbs.yml'
+      - 'scripts/gpr_market_top5_kbs.py'
+      - 'data/research_cohorts/vci578_behavioral_groups.csv'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install --upgrade pip 'pandas>=2.2,<3' 'numpy<2.3' pyarrow statsmodels scipy requests vnstock
+      - name: Run KBS fallback market screening
+        run: python scripts/gpr_market_top5_kbs.py
+      - name: Commit outputs
+        if: always()
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/gpr_market_top5/ || true
+          if git diff --cached --quiet; then echo 'No changes'; else git commit -m 'Add KBS GPR market screening outputs'; git push; fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: gpr-market-top5-kbs
+          path: data/gpr_market_top5/
+          retention-days: 30
