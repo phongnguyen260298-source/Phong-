@@ -1,38 +1,112 @@
-name: GPR market Top5 KBS fallback
+name: GPR market Top5 KBS fast full-history
 
 on:
   push:
     paths:
       - '.github/workflows/gpr-market-top5-kbs.yml'
-      - 'scripts/gpr_market_top5_kbs.py'
+      - 'scripts/gpr_market_top5_fetch_kbs_shard.py'
+      - 'scripts/gpr_market_top5_analyze_v3.py'
+      - 'data/research_cohorts/vci578_preexposure.csv'
       - 'data/research_cohorts/vci578_behavioral_groups.csv'
   workflow_dispatch:
+
+concurrency:
+  group: gpr-market-top5-kbs-fast-${{ github.run_id }}
+  cancel-in-progress: false
 
 permissions:
   contents: write
 
+env:
+  N_SHARDS: 4
+  VNSTOCK_API_KEY: ${{ secrets.VNSTOCK_API_KEY }}
+
 jobs:
-  run:
+  fetch:
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        shard: [0,1,2,3]
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - run: python -m pip install --upgrade pip 'pandas>=2.2,<3' 'numpy<2.3' pyarrow statsmodels scipy requests vnstock
-      - name: Run KBS fallback market screening
-        run: python scripts/gpr_market_top5_kbs.py
-      - name: Commit outputs
-        if: always()
+      - name: Install community VNStock
+        run: python -m pip install --upgrade pip 'pandas>=2.2,<3' 'numpy<2.3' vnstock
+      - name: Configure VNStock API key
+        shell: bash
         run: |
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add data/gpr_market_top5/ || true
-          if git diff --cached --quiet; then echo 'No changes'; else git commit -m 'Add KBS GPR market screening outputs'; git push; fi
+          test -n "$VNSTOCK_API_KEY"
+          mkdir -p "$HOME/.vnstock"
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          p=Path.home()/'.vnstock'/'api_key.json'
+          p.write_text(json.dumps({'api_key':os.environ['VNSTOCK_API_KEY']}),encoding='utf-8')
+          print('VNStock API key config written')
+          PY
+      - name: Fetch KBS full-history shard
+        env:
+          SHARD: ${{ matrix.shard }}
+          N_SHARDS: 4
+          REQUEST_PAUSE: 5.0
+        run: python scripts/gpr_market_top5_fetch_kbs_shard.py
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: gpr-market-top5-kbs
-          path: data/gpr_market_top5/
+          name: price-kbs-fast-shard-${{ matrix.shard }}
+          path: data/gpr_market_top5_v4/shards/
+          retention-days: 7
+
+  analyze:
+    needs: fetch
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install analysis stack
+        run: python -m pip install --upgrade pip 'pandas>=2.2,<3' 'numpy<2.3' statsmodels scipy requests
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: price-kbs-fast-shard-*
+          path: data/gpr_market_top5_v4/shards
+          merge-multiple: true
+      - name: Verify shard artifacts and coverage
+        shell: bash
+        run: |
+          find data/gpr_market_top5_v4/shards -maxdepth 2 -type f -print
+          test "$(find data/gpr_market_top5_v4/shards -name 'price_shard_*.csv.gz' | wc -l)" -ge 4
+          python - <<'PY'
+          from pathlib import Path
+          import pandas as pd
+          p=Path('data/gpr_market_top5_v4/shards')
+          cov=pd.concat([pd.read_csv(f) for f in p.glob('coverage_shard_*.csv')],ignore_index=True)
+          print('coverage firms=',cov.symbol.nunique(),'median bars=',cov['n'].median(),'min start=',cov['start'].min(),'max end=',cov['end'].max())
+          if cov.symbol.nunique() < 300:
+              raise RuntimeError('Insufficient KBS symbol coverage')
+          if cov['n'].median() < 500:
+              raise RuntimeError('KBS history appears truncated; median bars < 500')
+          PY
+      - name: Analyze Top5 market reactions
+        run: python scripts/gpr_market_top5_analyze_v3.py
+      - name: Commit final outputs
+        if: success()
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/gpr_market_top5_v4/ || true
+          if git diff --cached --quiet; then echo 'No changes'; else git commit -m 'Add KBS fast full-history GPR market results'; git pull --rebase origin main; git push; fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: gpr-market-top5-kbs-fast-final
+          path: data/gpr_market_top5_v4/
           retention-days: 30
