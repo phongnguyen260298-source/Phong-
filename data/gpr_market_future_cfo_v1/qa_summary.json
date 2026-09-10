@@ -11,6 +11,7 @@
   "cfo_period_max": "2025Q4",
   "cfo_next_nonmissing": 7404,
   "missing_rate": {
+    "cfo_lag": 0.04731901761604732,
     "cfo_assets": 0.006557798637006558,
     "cfo_next": 0.04796193905104796,
     "log_assets": 0.0,

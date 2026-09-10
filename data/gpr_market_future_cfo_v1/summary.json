@@ -1,5 +1,5 @@
 {
-  "interpretation": "Predictive/associational linkage only. Positive treated-total beta means a more negative GPR-linked abnormal return is associated with lower CFO next quarter. Causal market-feedback/self-fulfilling language is not permitted without additional identification.",
+  "interpretation": "Predictive/associational linkage only. Primary tests market reaction in quarter t against CFO in t+1 controlling CFO_t. Reverse placebo tests market reaction in t+1 against CFO_t controlling CFO_(t-1). Causal market-feedback/self-fulfilling language is not permitted without additional identification.",
   "qa": {
     "market_symbols": 378,
     "group_file_symbols": 578,
@@ -13,6 +13,7 @@
     "cfo_period_max": "2025Q4",
     "cfo_next_nonmissing": 7404,
     "missing_rate": {
+      "cfo_lag": 0.04731901761604732,
       "cfo_assets": 0.006557798637006558,
       "cfo_next": 0.04796193905104796,
       "log_assets": 0.0,
@@ -90,7 +91,7 @@
       "se_treated_total": 0.3565248948739903,
       "p_treated_total": 0.2984453696053381,
       "r2_within": 0.03940128978615709,
-      "q_fdr_interaction": null
+      "q_fdr_interaction": 0.6992609185996184
     },
     {
       "direction": "1 Threat×HighLiab anticipation",
@@ -108,25 +109,25 @@
       "se_treated_total": 0.055421411693964605,
       "p_treated_total": 0.43016751739318027,
       "r2_within": 0.06418281293386696,
-      "q_fdr_interaction": null
+      "q_fdr_interaction": 0.6121390328834027
     },
     {
       "direction": "1 Threat×HighLiab anticipation",
       "group": "HighLiab_TopTercile",
       "shock": "THREATS_z",
       "spec": "reverse_timing_placebo",
-      "n": 7406,
+      "n": 7047,
       "firms": 325,
-      "quarters": 23,
-      "beta_control_mr": -4.45452751398994e-17,
-      "p_control_mr": 0.3432199901175228,
-      "beta_interaction": 3.7497763794450125e-17,
-      "p_interaction": 0.5799090663843409,
-      "beta_treated_total": -7.047511345449276e-18,
-      "se_treated_total": 5.913999160753208e-17,
-      "p_treated_total": 0.9051433724621888,
-      "r2_within": 1.0,
-      "q_fdr_interaction": null
+      "quarters": 22,
+      "beta_control_mr": 0.07512601397658246,
+      "p_control_mr": 0.70106183251526,
+      "beta_interaction": -0.26517912762830476,
+      "p_interaction": 0.4498403479801001,
+      "beta_treated_total": -0.19005311365172228,
+      "se_treated_total": 0.3205324284778707,
+      "p_treated_total": 0.5532283739668444,
+      "r2_within": 0.06473658827254769,
+      "q_fdr_interaction": 0.470663749786981
     },
     {
       "direction": "2 Acts×HighLiab realization",
@@ -162,7 +163,7 @@
       "se_treated_total": 0.2252198910016503,
       "p_treated_total": 0.7228977753609986,
       "r2_within": 0.03962359862283282,
-      "q_fdr_interaction": null
+      "q_fdr_interaction": 0.6992609185996184
     },
     {
       "direction": "2 Acts×HighLiab realization",
@@ -180,25 +181,25 @@
       "se_treated_total": 0.06860813772717497,
       "p_treated_total": 0.6884735532544135,
       "r2_within": 0.053724851461624645,
-      "q_fdr_interaction": null
+      "q_fdr_interaction": 0.6795487728304146
     },
     {
       "direction": "2 Acts×HighLiab realization",
       "group": "HighLiab_TopTercile",
       "shock": "ACTS_z",
       "spec": "reverse_timing_placebo",
-      "n": 7406,
+      "n": 7047,
       "firms": 325,
-      "quarters": 23,
-      "beta_control_mr": -1.846038716746816e-17,
-      "p_control_mr": 0.7826368769641447,
-      "beta_interaction": 2.553880939109739e-17,
-      "p_interaction": 0.7938520313778097,
-      "beta_treated_total": 7.078422223629232e-18,
-      "se_treated_total": 7.93021361823326e-17,
-      "p_treated_total": 0.9288761488727295,
-      "r2_within": 1.0,
-      "q_fdr_interaction": null
+      "quarters": 22,
+      "beta_control_mr": -0.3536169526431144,
+      "p_control_mr": 0.18724012369978382,
+      "beta_interaction": 0.9141425847369957,
+      "p_interaction": 0.025169488354434,
+      "beta_treated_total": 0.5605256320938814,
+      "se_treated_total": 0.3300650299669675,
+      "p_treated_total": 0.0894647627398106,
+      "r2_within": 0.06582156722209787,
+      "q_fdr_interaction": 0.151016930126604
     },
     {
       "direction": "3 Acts×CashConversionTrap",
@@ -234,7 +235,7 @@
       "se_treated_total": 0.5644356975448178,
       "p_treated_total": 0.016466572412389222,
       "r2_within": 0.039812126989607455,
-      "q_fdr_interaction": null
+      "q_fdr_interaction": 0.4076193722809238
     },
     {
       "direction": "3 Acts×CashConversionTrap",
@@ -252,25 +253,25 @@
       "se_treated_total": 0.03256488251974152,
       "p_treated_total": 0.6203962324150329,
       "r2_within": 0.05374905726775836,
-      "q_fdr_interaction": null
+      "q_fdr_interaction": 0.6795487728304146
     },
     {
       "direction": "3 Acts×CashConversionTrap",
       "group": "CashConversionTrap",
       "shock": "ACTS_z",
       "spec": "reverse_timing_placebo",
-      "n": 7406,
+      "n": 7047,
       "firms": 325,
-      "quarters": 23,
-      "beta_control_mr": -9.052180594514608e-18,
-      "p_control_mr": 0.8666140311657982,
-      "beta_interaction": 3.8512275236662906e-17,
-      "p_interaction": 0.7285147587811722,
-      "beta_treated_total": 2.94600946421483e-17,
-      "se_treated_total": 1.1051489162884367e-16,
-      "p_treated_total": 0.7897992812080381,
-      "r2_within": 1.0,
-      "q_fdr_interaction": null
+      "quarters": 22,
+      "beta_control_mr": 0.06965104551107232,
+      "p_control_mr": 0.7647688247298707,
+      "beta_interaction": -0.3279806443239183,
+      "p_interaction": 0.4674718030121907,
+      "beta_treated_total": -0.258329598812846,
+      "se_treated_total": 0.46101850094327446,
+      "p_treated_total": 0.5752438623654812,
+      "r2_within": 0.06463704323784536,
+      "q_fdr_interaction": 0.470663749786981
     },
     {
       "direction": "4 Threat×DoubleExposure",
@@ -306,7 +307,7 @@
       "se_treated_total": 0.5213417039984375,
       "p_treated_total": 0.8592301647395413,
       "r2_within": 0.03923766540669704,
-      "q_fdr_interaction": null
+      "q_fdr_interaction": 0.8428131419881488
     },
     {
       "direction": "4 Threat×DoubleExposure",
@@ -324,25 +325,25 @@
       "se_treated_total": 0.05286077819465027,
       "p_treated_total": 0.02426509071912486,
       "r2_within": 0.06537246651892603,
-      "q_fdr_interaction": null
+      "q_fdr_interaction": 0.007972423701184006
     },
     {
       "direction": "4 Threat×DoubleExposure",
       "group": "DoubleExposure_TopTercile",
       "shock": "THREATS_z",
       "spec": "reverse_timing_placebo",
-      "n": 7406,
+      "n": 7047,
       "firms": 325,
-      "quarters": 23,
-      "beta_control_mr": -3.4633544151038874e-17,
-      "p_control_mr": 0.48539515315721893,
-      "beta_interaction": 2.7327191549726523e-17,
-      "p_interaction": 0.6566555312273668,
-      "beta_treated_total": -7.306352601312351e-18,
-      "se_treated_total": 4.862663173072186e-17,
-      "p_treated_total": 0.8805641152460536,
-      "r2_within": 1.0,
-      "q_fdr_interaction": null
+      "quarters": 22,
+      "beta_control_mr": -0.11456780454973009,
+      "p_control_mr": 0.6202708828657766,
+      "beta_interaction": 0.2704856972040653,
+      "p_interaction": 0.3175735444793901,
+      "beta_treated_total": 0.1559178926543352,
+      "se_treated_total": 0.17093110025287525,
+      "p_treated_total": 0.3616802470228927,
+      "r2_within": 0.06469587941096122,
+      "q_fdr_interaction": 0.470663749786981
     },
     {
       "direction": "5a Threat×AssetCommitmentMismatch",
@@ -378,7 +379,7 @@
       "se_treated_total": 0.8320404450495497,
       "p_treated_total": 0.9888342686417864,
       "r2_within": 0.0392081850894217,
-      "q_fdr_interaction": null
+      "q_fdr_interaction": 0.9101489236734821
     },
     {
       "direction": "5a Threat×AssetCommitmentMismatch",
@@ -396,25 +397,25 @@
       "se_treated_total": 0.06893700846539824,
       "p_treated_total": 0.2521105014910736,
       "r2_within": 0.0639962521179872,
-      "q_fdr_interaction": null
+      "q_fdr_interaction": 0.6121390328834027
     },
     {
       "direction": "5a Threat×AssetCommitmentMismatch",
       "group": "AssetCommitmentMismatch",
       "shock": "THREATS_z",
       "spec": "reverse_timing_placebo",
-      "n": 7406,
+      "n": 7047,
       "firms": 325,
-      "quarters": 23,
-      "beta_control_mr": -2.3642696875027085e-17,
-      "p_control_mr": 0.5803051335860259,
-      "beta_interaction": -7.852529709733659e-17,
-      "p_interaction": 0.49081076843817906,
-      "beta_treated_total": -1.0216799397236368e-16,
-      "se_treated_total": 1.0125418073942486e-16,
-      "p_treated_total": 0.31296267191060567,
-      "r2_within": 1.0,
-      "q_fdr_interaction": null
+      "quarters": 22,
+      "beta_control_mr": -0.06984845516268093,
+      "p_control_mr": 0.7201809656823948,
+      "beta_interaction": 0.5673523171378037,
+      "p_interaction": 0.470663749786981,
+      "beta_treated_total": 0.49750386197512275,
+      "se_treated_total": 0.7514933202005993,
+      "p_treated_total": 0.5079581874526452,
+      "r2_within": 0.0647072481449027,
+      "q_fdr_interaction": 0.470663749786981
     },
     {
       "direction": "5b Threat×FragileLowMarginFunding",
@@ -450,7 +451,7 @@
       "se_treated_total": 0.5819371086360413,
       "p_treated_total": 0.8146459653814005,
       "r2_within": 0.03922277489493775,
-      "q_fdr_interaction": null
+      "q_fdr_interaction": 0.8428131419881488
     },
     {
       "direction": "5b Threat×FragileLowMarginFunding",
@@ -468,25 +469,25 @@
       "se_treated_total": 0.11177791025479762,
       "p_treated_total": 0.9756066674561917,
       "r2_within": 0.06387754223569853,
-      "q_fdr_interaction": null
+      "q_fdr_interaction": 0.999528834363779
     },
     {
       "direction": "5b Threat×FragileLowMarginFunding",
       "group": "FragileLowMarginFunding",
       "shock": "THREATS_z",
       "spec": "reverse_timing_placebo",
-      "n": 7406,
+      "n": 7047,
       "firms": 325,
-      "quarters": 23,
-      "beta_control_mr": -3.110077364532508e-17,
-      "p_control_mr": 0.5094804910985065,
-      "beta_interaction": 2.6662714555778274e-17,
-      "p_interaction": 0.7667458621056036,
-      "beta_treated_total": -4.438059089546804e-18,
-      "se_treated_total": 7.120600636470836e-17,
-      "p_treated_total": 0.9503024013127946,
-      "r2_within": 1.0,
-      "q_fdr_interaction": null
+      "quarters": 22,
+      "beta_control_mr": -0.15162052404073562,
+      "p_control_mr": 0.49026062526271863,
+      "beta_interaction": 0.8238708295716066,
+      "p_interaction": 0.13737594394594965,
+      "beta_treated_total": 0.6722503055308711,
+      "se_treated_total": 0.47032271975951306,
+      "p_treated_total": 0.1529070052585962,
+      "r2_within": 0.06510250359857117,
+      "q_fdr_interaction": 0.41212783183784896
     }
   ]
 }
