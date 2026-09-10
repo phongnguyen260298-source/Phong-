@@ -28,6 +28,29 @@ jobs:
           run-id: 34457103163
           github-token: ${{ github.token }}
 
+      - name: Download locked corporate CFO baseline artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: vn-research-v42-vci-full
+          path: input/vci42
+          repository: phongnguyen260298-source/Phong-
+          run-id: 34329813990
+          github-token: ${{ github.token }}
+
+      - name: Restore locked CFO panel path
+        shell: bash
+        run: |
+          set -euo pipefail
+          SRC="$(find input/vci42 -type f -name 'vci42_analysis_panel_2020_2025.csv' -print -quit)"
+          if [ -z "$SRC" ]; then
+            echo '::error::Locked CFO panel vci42_analysis_panel_2020_2025.csv not found in baseline artifact'
+            find input/vci42 -maxdepth 5 -type f | sort | head -200
+            exit 1
+          fi
+          mkdir -p output/xy_screen
+          cp "$SRC" output/xy_screen/vci42_analysis_panel_2020_2025.csv
+          echo "Restored CFO panel from $SRC"
+
       - name: Install analysis stack
         run: python -m pip install --upgrade pip 'pandas>=2.2,<3' 'numpy<2.3' pyarrow scipy statsmodels linearmodels requests
 
