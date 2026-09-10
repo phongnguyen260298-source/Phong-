@@ -56,8 +56,8 @@ jobs:
           "$VENV_PATH/bin/python" -m pip install --upgrade 'pip<27' 'pandas>=2.0,<3' 'numpy>=1.24,<2.3'
           "$VENV_PATH/bin/python" - <<'PY'
           from vnstock_data import Quote
-          q = Quote(source='VCI')
-          df = q.history(symbol='HPG', start='2025-01-01', end='2025-12-31', interval='1D')
+          q = Quote(source='VCI', symbol='HPG')
+          df = q.history(start='2025-01-01', end='2025-12-31', interval='1D')
           print('Bronze Quote import OK; HPG rows=', len(df))
           if df is None or df.empty:
               raise RuntimeError('Bronze smoke test returned no HPG rows')
