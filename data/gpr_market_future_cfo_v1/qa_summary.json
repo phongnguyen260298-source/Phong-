@@ -1,55 +1,55 @@
 {
-  "market_symbols": 378,
+  "market_symbols": 578,
   "group_file_symbols": 578,
   "cfo_symbols_2020_2025": 578,
-  "linkage_symbols": 325,
-  "linkage_rows": 7777,
+  "linkage_symbols": 578,
+  "linkage_rows": 13792,
   "duplicate_symbol_quarter": 0,
   "market_start": "2020-01-02",
   "market_end": "2025-12-31",
   "cfo_period_min": "2020Q1",
   "cfo_period_max": "2025Q4",
-  "cfo_next_nonmissing": 7404,
+  "cfo_next_nonmissing": 13090,
   "missing_rate": {
-    "cfo_lag": 0.04731901761604732,
-    "cfo_assets": 0.006557798637006558,
-    "cfo_next": 0.04796193905104796,
-    "log_assets": 0.0,
-    "leverage": 0.0,
+    "cfo_lag": 0.050246519721577725,
+    "cfo_assets": 0.0095707656612529,
+    "cfo_next": 0.05089907192575406,
+    "log_assets": 7.250580046403712e-05,
+    "leverage": 7.250580046403712e-05,
     "THREATS_z": 0.0,
     "ACTS_z": 0.0,
-    "event5_THREATS_z": 0.5147229008615147,
-    "event5_ACTS_z": 0.633020444901633
+    "event5_THREATS_z": 0.5300899071925754,
+    "event5_ACTS_z": 0.638703596287703
   },
   "groups": {
     "HighLiab_TopTercile": {
-      "classified_symbols": 325,
-      "treated_symbols": 103,
-      "control_symbols": 222,
+      "classified_symbols": 578,
+      "treated_symbols": 187,
+      "control_symbols": 391,
       "missing_symbols": 0
     },
     "CashConversionTrap": {
-      "classified_symbols": 325,
-      "treated_symbols": 33,
-      "control_symbols": 292,
+      "classified_symbols": 578,
+      "treated_symbols": 58,
+      "control_symbols": 520,
       "missing_symbols": 0
     },
     "DoubleExposure_TopTercile": {
-      "classified_symbols": 325,
-      "treated_symbols": 53,
-      "control_symbols": 272,
+      "classified_symbols": 578,
+      "treated_symbols": 101,
+      "control_symbols": 477,
       "missing_symbols": 0
     },
     "FragileLowMarginFunding": {
-      "classified_symbols": 325,
-      "treated_symbols": 36,
-      "control_symbols": 289,
+      "classified_symbols": 578,
+      "treated_symbols": 88,
+      "control_symbols": 490,
       "missing_symbols": 0
     },
     "AssetCommitmentMismatch": {
-      "classified_symbols": 325,
-      "treated_symbols": 32,
-      "control_symbols": 293,
+      "classified_symbols": 578,
+      "treated_symbols": 53,
+      "control_symbols": 525,
       "missing_symbols": 0
     }
   }

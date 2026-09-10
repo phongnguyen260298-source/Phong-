@@ -1,0 +1,19 @@
+{
+  "source": "VCI v4.2 artifact vn-research-v42-vci-full, run 34329813990",
+  "builder": "exact VCI item_id only",
+  "balance_sheet_files": 580,
+  "cash_flow_files": 579,
+  "rows_2020_2025": 13867,
+  "symbols_2020_2025": 578,
+  "period_min": "2020Q1",
+  "period_max": "2025Q4",
+  "duplicate_symbol_quarter": 0,
+  "missing": {
+    "assets": 7.211365111415591e-05,
+    "liabilities": 7.211365111415591e-05,
+    "cfo": 0.009230547342611957,
+    "cfo_assets": 0.00951900194706858,
+    "leverage": 7.211365111415591e-05,
+    "log_assets": 7.211365111415591e-05
+  }
+}
