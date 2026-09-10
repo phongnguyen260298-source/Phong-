@@ -108,11 +108,23 @@ jobs:
           PY
 
       - name: Commit linkage outputs
+        shell: bash
         run: |
+          set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add data/gpr_market_future_cfo_v1/ output/xy_screen/cfo_linkage_builder_qa.json || true
-          if git diff --cached --quiet; then echo 'No changes'; else git commit -m 'Add market reaction to future CFO results'; git pull --rebase origin main; git push; fi
+          if git diff --cached --quiet; then
+            echo 'No changes'
+          else
+            git commit -m 'Add market reaction to future CFO results'
+            # The panel builder also creates working files that are intentionally not committed.
+            # Clear those generated unstaged/untracked files before rebasing so git pull cannot fail.
+            git reset --hard HEAD
+            git clean -fd
+            git pull --rebase origin main
+            git push
+          fi
 
       - uses: actions/upload-artifact@v4
         if: always()
