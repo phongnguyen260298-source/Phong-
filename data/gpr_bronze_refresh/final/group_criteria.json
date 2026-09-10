@@ -1,0 +1,18 @@
+{
+  "window": "2017-2019; firm median; require >=2 valid quarters",
+  "HighLiab_TopTercile": "liab_ratio >= cross-sectional 66.7 percentile",
+  "CashConversionTrap": "nwc_tied_ratio=(inventory+receivables-payables)/assets >= 66.7 percentile",
+  "DoubleExposure_TopTercile": "HighLiab AND CashConversionTrap",
+  "FragileLowMarginFunding": "HighLiab AND operating_margin <= 33.3 percentile",
+  "AssetCommitmentMismatch": "HighLiab AND fixed_assets/assets >= 66.7 percentile",
+  "thresholds_q67": {
+    "liab_ratio": 0.4721168508083521,
+    "fixed_ratio": 0.253920031120757,
+    "operating_margin": 0.09794703882074654
+  },
+  "thresholds_q33": {
+    "liab_ratio": 0.25769455490986526,
+    "fixed_ratio": 0.0800601500843361,
+    "operating_margin": 0.027803688293687075
+  }
+}

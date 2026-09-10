@@ -1,0 +1,2 @@
+old_rows,new_rows,old_symbols,new_symbols,overlap_keys,only_old_keys,only_new_keys,numeric_pairs,match_rel_1e6,median_relative_diff,p95_relative_diff
+5182747,5182747,580,580,5182747,0,0,5158941,1.0,0.0,0.0

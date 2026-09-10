@@ -1,0 +1,45 @@
+{
+  "refresh_compare": {
+    "old_rows": 5182747,
+    "new_rows": 5182747,
+    "old_symbols": 580,
+    "new_symbols": 580,
+    "overlap_keys": 5182747,
+    "only_old_keys": 0,
+    "only_new_keys": 0,
+    "numeric_pairs": 5158941,
+    "match_rel_1e6": 1.0,
+    "median_relative_diff": 0.0,
+    "p95_relative_diff": 0.0
+  },
+  "selected_item_ids": {
+    "assets": "BS_TOTAL_ASSETS",
+    "liabilities": "BS_TOTAL_LIABILITIES",
+    "current_liab": "BS_SHORT_TERM_LIABILITIES",
+    "inventory": "BS_INVENTORIES",
+    "receivables": "BS_SHORT_TERM_RECEIVABLES",
+    "payables": null,
+    "fixed_assets": "BS_FIXED_ASSETS",
+    "revenue": "IS_REVENUE",
+    "operating_profit": "IS_OPERATING_PROFIT",
+    "cfo": "CF_NET_CASH_FLOWS_FROM_OPERATING_ACTIVITIES"
+  },
+  "analysis_firms": 567,
+  "analysis_rows": 13603,
+  "duplicate_symbol_quarter": 0,
+  "groups": {
+    "HighLiab_TopTercile": {
+      "treated": 190,
+      "control": 378
+    },
+    "FragileLowMarginFunding": {
+      "treated": 105,
+      "control": 463
+    },
+    "AssetCommitmentMismatch": {
+      "treated": 42,
+      "control": 526
+    }
+  },
+  "ai_measurement_note": "AI_GPR/Threat/Acts are AI-derived measures of geopolitical risk, not firm AI adoption or an AI economic shock."
+}
