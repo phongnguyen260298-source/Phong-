@@ -1,0 +1,13 @@
+{
+  "shard": 3,
+  "n_shards": 4,
+  "symbols_total_cohort": 378,
+  "target": 94,
+  "ok": 94,
+  "errors": 0,
+  "rows_raw": 127025,
+  "duplicate_symbol_date": 0,
+  "source": "vnstock-community-KBS",
+  "start": "2020-01-01",
+  "end": "2025-12-31"
+}
