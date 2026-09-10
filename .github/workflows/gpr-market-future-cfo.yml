@@ -6,6 +6,7 @@ on:
     paths:
       - '.github/workflows/gpr-market-future-cfo.yml'
       - 'scripts/gpr_market_future_cfo_v1.py'
+      - 'scripts/vci_xy_screen_v1.py'
 
 permissions:
   contents: write
@@ -30,6 +31,27 @@ jobs:
           repository: phongnguyen260298-source/Phong-
           run-id: 34329813990
           github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Diagnose VCI report schemas
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import pandas as pd
+          for report in ['balance_sheet','income_statement','cash_flow']:
+              files=sorted(Path('input/vci42').glob(f'chunk_*/fundamental_quarter/{report}/*.parquet'))
+              print('\nREPORT', report, 'FILES', len(files))
+              if not files:
+                  continue
+              d=pd.read_parquet(files[0])
+              print('FILE', files[0])
+              print('COLUMNS', list(d.columns))
+              print('DTYPES', {c:str(t) for c,t in d.dtypes.items()})
+              print('HEAD')
+              print(d.head(8).to_string())
+              obj=[c for c in d.columns if d[c].dtype=='object']
+              for c in obj:
+                  vals=d[c].dropna().astype(str).drop_duplicates().head(120).tolist()
+                  print('OBJECT_VALUES', c, vals)
+          PY
       - name: Rebuild locked CFO panel
         run: python scripts/vci_xy_screen_v1.py
       - name: Run market reaction to future CFO linkage
