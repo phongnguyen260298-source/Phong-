@@ -1,0 +1,253 @@
+{
+  "qa": {
+    "panel_rows": 13867,
+    "panel_symbols": 578,
+    "exposure_symbols": 378,
+    "analysis_symbols": 325,
+    "analysis_rows": 7800,
+    "duplicate_symbol_quarter": 0,
+    "period_min": "2020Q1",
+    "period_max": "2025Q4",
+    "missing": {
+      "cfo_assets": 0.006538461538461538,
+      "log_assets": 0.0,
+      "leverage": 0.0,
+      "liab_exp": 0.0,
+      "Threat": 0.0,
+      "Acts": 0.0
+    },
+    "binary_groups": {
+      "high50": {
+        "treated_firms": 163,
+        "control_firms": 162
+      },
+      "high33": {
+        "treated_firms": 109,
+        "control_firms": 216
+      },
+      "high25": {
+        "treated_firms": 82,
+        "control_firms": 243
+      }
+    }
+  },
+  "results": [
+    {
+      "spec": "continuous_main",
+      "shock": "Threat",
+      "exposure": "liab_exp",
+      "n": 7749,
+      "firms": 325,
+      "beta": -0.00032276391532267795,
+      "se": 0.0016126139716553071,
+      "p": 0.8413691454194159,
+      "r2_within": 0.00507728927556117,
+      "q_fdr_family": 0.8413691454194159
+    },
+    {
+      "spec": "continuous_excl_2022H1",
+      "shock": "Threat",
+      "exposure": "liab_exp",
+      "n": 7101,
+      "firms": 325,
+      "beta": -0.0005441797541607748,
+      "se": 0.0016735847027971604,
+      "p": 0.7450714332174733,
+      "r2_within": 0.005451606834396383,
+      "q_fdr_family": 0.7450714332174733
+    },
+    {
+      "spec": "continuous_winsor_1_99",
+      "shock": "Threat",
+      "exposure": "liab_exp",
+      "n": 7749,
+      "firms": 325,
+      "beta": -0.0007926788012001588,
+      "se": 0.0013723184917162057,
+      "p": 0.5635381843749574,
+      "r2_within": 0.003501523213394475,
+      "q_fdr_family": 0.5635381843749574
+    },
+    {
+      "spec": "lag1",
+      "shock": "Threat",
+      "exposure": "liab_exp",
+      "n": 7425,
+      "firms": 325,
+      "beta": -0.0009047593124444705,
+      "se": 0.0015537745558777429,
+      "p": 0.56038474593552,
+      "r2_within": 0.005429682307250494,
+      "q_fdr_family": 0.660870153776129
+    },
+    {
+      "spec": "lead1_placebo",
+      "shock": "Threat",
+      "exposure": "liab_exp",
+      "n": 7429,
+      "firms": 325,
+      "beta": 5.0803550345896555e-05,
+      "se": 0.0015744196740176308,
+      "p": 0.974259148612207,
+      "r2_within": 0.0052293401998196876,
+      "q_fdr_family": 0.9851712642208916
+    },
+    {
+      "spec": "continuous_main",
+      "shock": "Acts",
+      "exposure": "liab_exp",
+      "n": 7749,
+      "firms": 325,
+      "beta": -0.0013686706608030436,
+      "se": 0.001225802741146566,
+      "p": 0.26422282977391953,
+      "r2_within": 0.005301397964578625,
+      "q_fdr_family": 0.5284456595478391
+    },
+    {
+      "spec": "continuous_excl_2022H1",
+      "shock": "Acts",
+      "exposure": "liab_exp",
+      "n": 7101,
+      "firms": 325,
+      "beta": -0.0007553310540772234,
+      "se": 0.001256154727031673,
+      "p": 0.5476576103228472,
+      "r2_within": 0.0054559885287699394,
+      "q_fdr_family": 0.7450714332174733
+    },
+    {
+      "spec": "continuous_winsor_1_99",
+      "shock": "Acts",
+      "exposure": "liab_exp",
+      "n": 7749,
+      "firms": 325,
+      "beta": -0.001364910926288972,
+      "se": 0.0010067931873387335,
+      "p": 0.17523557849214288,
+      "r2_within": 0.0037035771601023892,
+      "q_fdr_family": 0.35047115698428577
+    },
+    {
+      "spec": "lag1",
+      "shock": "Acts",
+      "exposure": "liab_exp",
+      "n": 7425,
+      "firms": 325,
+      "beta": -0.0008326978956372643,
+      "se": 0.0018979708941007358,
+      "p": 0.660870153776129,
+      "r2_within": 0.005443688295255211,
+      "q_fdr_family": 0.660870153776129
+    },
+    {
+      "spec": "lead1_placebo",
+      "shock": "Acts",
+      "exposure": "liab_exp",
+      "n": 7429,
+      "firms": 325,
+      "beta": 1.7235187915606138e-05,
+      "se": 0.0009272815338707258,
+      "p": 0.9851712642208916,
+      "r2_within": 0.005228775336137748,
+      "q_fdr_family": 0.9851712642208916
+    },
+    {
+      "spec": "binary_threshold",
+      "shock": "Threat",
+      "exposure": "high50",
+      "n": 7749,
+      "firms": 325,
+      "beta": 0.0002290979309727268,
+      "se": 0.0021256265756643307,
+      "p": 0.9141739150634236,
+      "r2_within": 0.005045296332146121,
+      "q_fdr_family": 0.9786914496857477
+    },
+    {
+      "spec": "binary_threshold",
+      "shock": "Threat",
+      "exposure": "high33",
+      "n": 7749,
+      "firms": 325,
+      "beta": -7.448964168893023e-05,
+      "se": 0.0027887894120738332,
+      "p": 0.9786914496857477,
+      "r2_within": 0.005046733289208349,
+      "q_fdr_family": 0.9786914496857477
+    },
+    {
+      "spec": "binary_threshold",
+      "shock": "Threat",
+      "exposure": "high25",
+      "n": 7749,
+      "firms": 325,
+      "beta": 0.0002579727370131437,
+      "se": 0.0028474613802526296,
+      "p": 0.9278149117333894,
+      "r2_within": 0.005044079547498526,
+      "q_fdr_family": 0.9786914496857477
+    },
+    {
+      "spec": "binary_threshold",
+      "shock": "Acts",
+      "exposure": "high50",
+      "n": 7749,
+      "firms": 325,
+      "beta": -0.001805736436146671,
+      "se": 0.0018372610261803005,
+      "p": 0.3257175796275509,
+      "r2_within": 0.0049129915842650584,
+      "q_fdr_family": 0.9329626691634871
+    },
+    {
+      "spec": "binary_threshold",
+      "shock": "Acts",
+      "exposure": "high33",
+      "n": 7749,
+      "firms": 325,
+      "beta": -0.0012701806732092727,
+      "se": 0.0017441458012676665,
+      "p": 0.46648133458174357,
+      "r2_within": 0.005022571396901543,
+      "q_fdr_family": 0.9329626691634871
+    },
+    {
+      "spec": "binary_threshold",
+      "shock": "Acts",
+      "exposure": "high25",
+      "n": 7749,
+      "firms": 325,
+      "beta": -0.001652014426143819,
+      "se": 0.0018826326935336621,
+      "p": 0.38024239194636333,
+      "r2_within": 0.005051165699222482,
+      "q_fdr_family": 0.9329626691634871
+    },
+    {
+      "spec": "joint_threat_acts",
+      "shock": "Threat",
+      "exposure": "liab_exp",
+      "n": 7749,
+      "firms": 325,
+      "beta": 0.0017769375523856662,
+      "se": 0.0031398445544616365,
+      "p": 0.5714573813010841,
+      "r2_within": 0.005381685067400999,
+      "q_fdr_family": 0.5714573813010841
+    },
+    {
+      "spec": "joint_threat_acts",
+      "shock": "Acts",
+      "exposure": "liab_exp",
+      "n": 7749,
+      "firms": 325,
+      "beta": -0.002735022824431437,
+      "se": 0.0026272792080044823,
+      "p": 0.2979051254842362,
+      "r2_within": 0.005381685067400999,
+      "q_fdr_family": 0.5714573813010841
+    }
+  ],
+  "causal_note": "TWFE exposure interactions are interpreted as differential associations unless stronger identification supports causal language."
+}
