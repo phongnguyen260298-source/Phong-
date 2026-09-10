@@ -78,7 +78,7 @@ for _,r in ev.iterrows():
     if i>=len(trading): continue
     td=trading[i]; win=trading[i:min(i+5,len(trading))]
     z=px[px.date.isin(win)].groupby('symbol',as_index=False)['ar'].sum().rename(columns={'ar':'car5'})
-    z['shock']=r.shock; z['trade_date']=td; z['period_q']=pd.Timestamp(td).to_period('Q').strftime('%YQ%q') if False else str(pd.Timestamp(td).to_period('Q'))
+    z['shock']=r.shock; z['trade_date']=td; z['period_q']=str(pd.Timestamp(td).to_period('Q'))
     erows.append(z)
 efirm=pd.concat(erows,ignore_index=True) if erows else pd.DataFrame(columns=['symbol','car5','shock','trade_date','period_q'])
 eq=efirm.groupby(['symbol','period_q','shock'],as_index=False)['car5'].mean().pivot(index=['symbol','period_q'],columns='shock',values='car5').reset_index()
@@ -130,7 +130,9 @@ def fit_model(data, shock, grp, event=False, winsor=False, reverse=False):
     if winsor:
         for c in [y,'cfo_assets','log_assets','leverage','mr_use','mr_group']: x[c]=wins(x[c])
     if len(x)<200 or x.symbol.nunique()<20 or x.period_q.nunique()<6: return None
-    x=x.set_index(['symbol','period_q']).sort_index()
+    quarters=int(x['pidx'].nunique())
+    # PanelOLS requires a numeric or date-like time index; pidx is the locked numeric quarter index.
+    x=x.set_index(['symbol','pidx']).sort_index()
     X=x[['mr_use','mr_group','cfo_assets','log_assets','leverage']]
     mod=PanelOLS(x[y],X,entity_effects=True,time_effects=True,drop_absorbed=True)
     r=mod.fit(cov_type='clustered',cluster_entity=True,cluster_time=True)
@@ -140,7 +142,7 @@ def fit_model(data, shock, grp, event=False, winsor=False, reverse=False):
     var=float(cov.loc['mr_use','mr_use']+cov.loc['mr_group','mr_group']+2*cov.loc['mr_use','mr_group'])
     se_total=np.sqrt(var) if var>=0 else np.nan
     p_total=float(2*norm.sf(abs(total/se_total))) if np.isfinite(se_total) and se_total>0 else np.nan
-    return {'n':int(len(x)),'firms':int(x.index.get_level_values(0).nunique()),'quarters':int(x.index.get_level_values(1).nunique()),
+    return {'n':int(len(x)),'firms':int(x.index.get_level_values(0).nunique()),'quarters':quarters,
             'beta_control_mr':b0,'p_control_mr':float(r.pvalues.get('mr_use',np.nan)),
             'beta_interaction':b1,'p_interaction':float(r.pvalues.get('mr_group',np.nan)),
             'beta_treated_total':total,'se_treated_total':se_total,'p_treated_total':p_total,
