@@ -1,0 +1,6 @@
+group,lead_terms,cov_rank,wald_chi2,pretrend_joint_p,covariance
+HighLiab_TopTercile,7,7,4.621207704669569,0.7060769383667109,entity-clustered PSD
+CashConversionTrap,7,7,7.766894300675999,0.353597158577343,entity-clustered PSD
+DoubleExposure_TopTercile,7,7,4.139357816471401,0.7635935339806172,entity-clustered PSD
+FragileLowMarginFunding,7,7,3.752118448667573,0.8078447847818155,entity-clustered PSD
+AssetCommitmentMismatch,7,7,7.418339062149105,0.3866586196692239,entity-clustered PSD

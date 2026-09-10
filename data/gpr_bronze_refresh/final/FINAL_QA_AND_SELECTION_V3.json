@@ -1,0 +1,10 @@
+{
+  "baseline_refresh_exact_match": true,
+  "analysis_firms": 567,
+  "analysis_rows": 13603,
+  "duplicate_symbol_quarter": 0,
+  "selected_direction": "Acts × HighLiab — realization",
+  "selection_rule": "PASS requires BH-FDR q<0.05, valid entity-clustered joint pretrend p>=0.10, and treated firms>=50; rank PASS by q then treated sample. Primary models retain two-way firm+time clustered SE.",
+  "pretrend_fix": "v2 negative Wald statistics were invalid because two-way clustered covariance was indefinite; v3 gate uses entity-clustered PSD covariance and non-negative Wald chi-square.",
+  "measurement_note": "AI_GPR/Threat/Acts are AI-derived geopolitical-risk measures, not firm AI adoption or an AI economic shock."
+}
