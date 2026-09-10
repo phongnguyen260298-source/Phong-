@@ -11,7 +11,8 @@ ROOT=Path('input/vci42')
 OUT=Path('output/xy_screen'); OUT.mkdir(parents=True,exist_ok=True)
 
 def normtxt(s):
-    s=unicodedata.normalize('NFD',str(s)); s=''.join(c for c in s if unicodedata.category(c)!='Mn')
+    s=str(s).replace('Đ','D').replace('đ','d')
+    s=unicodedata.normalize('NFD',s); s=''.join(c for c in s if unicodedata.category(c)!='Mn')
     return re.sub(r'[^a-z0-9]+',' ',s.lower()).strip()
 
 def qp(v):
@@ -53,11 +54,29 @@ ALIASES={
 'cfo':['luu chuyen tien thuan tu hoat dong kinh doanh','luu chuyen tien thuan tu hd kinh doanh','net cash flows from operating activities','net cash flow from operating activities'],
 'capex':['tien chi de mua sam xay dung tscd va cac tai san dai han khac','tien chi mua sam xay dung tscd','purchase of fixed assets','payments for acquisition of fixed assets']}
 
+# Prefer stable VCI item_id codes; text matching is only a fallback.
+ITEM_IDS={
+'assets':['BS_TOTAL_ASSETS'],
+'inventory':['BS_INVENTORIES'],
+'receivables':['BS_SHORT_TERM_RECEIVABLES'],
+'current_liab':['BS_SHORT_TERM_LIABILITIES'],
+'liabilities':['BS_TOTAL_LIABILITIES'],
+'cash':['BS_CASH_AND_PRECIOUS_METALS'],
+'fixed_assets':['BS_FIXED_ASSETS'],
+'revenue':['IS_NET_REVENUE'],
+'cogs':['IS_COST_OF_GOODS_SOLD'],
+'gross_profit':['IS_GROSS_PROFIT'],
+'net_income':['IS_NET_PROFIT_AFTER_TAX'],
+'cfo':['CF_NET_CASH_FLOWS_FROM_OPERATING_ACTIVITIES'],
+'capex':['CF_PAYMENTS_FOR_FIXED_ASSETS']}
+ID_TO_KEY={item_id:k for k,ids in ITEM_IDS.items() for item_id in ids}
+
 def match(name, keys):
     z=normtxt(name)
     for k in keys:
         for a in ALIASES[k]:
-            if z==a or a in z: return k
+            a2=normtxt(a)
+            if z==a2 or a2 in z: return k
     return None
 
 def load_report(report, keys):
@@ -66,14 +85,21 @@ def load_report(report, keys):
     for f in fs:
         d=pd.read_parquet(f); p,n,v=detect(d)
         if len(schemas)<4: schemas.append({'file':str(f),'columns':list(d.columns),'period':p,'name':n,'value':v})
-        x=d[[p,n,v]].copy(); x['symbol']=f.stem; x['period_q']=x[p].map(qp); x['metric']=x[n].map(lambda s:match(s,keys))
+        cols=[p,n,v] + (['item_id'] if 'item_id' in d.columns and 'item_id' not in {p,n,v} else [])
+        x=d[cols].copy(); x['symbol']=f.stem; x['period_q']=x[p].map(qp)
+        text_metric=x[n].map(lambda s:match(s,keys))
+        if 'item_id' in x.columns:
+            id_metric=x['item_id'].astype(str).map(lambda s:ID_TO_KEY.get(s) if ID_TO_KEY.get(s) in keys else None)
+            x['metric']=id_metric.where(id_metric.notna(),text_metric)
+        else:
+            x['metric']=text_metric
         x=x[x.metric.notna() & x.period_q.notna()]
         x['value']=pd.to_numeric(x[v],errors='coerce')
         rows.append(x[['symbol','period_q','metric','value',n]].rename(columns={n:'item_name'}))
     z=pd.concat(rows,ignore_index=True) if rows else pd.DataFrame()
     (OUT/f'{report}_schema.json').write_text(json.dumps(schemas,ensure_ascii=False,indent=2),encoding='utf-8')
-    if z.empty: return pd.DataFrame()
-    # prefer the most exact/short item when duplicates exist
+    if z.empty:
+        raise RuntimeError(f'No matched metrics for report={report}, keys={keys}; VCI files={len(fs)}')
     z['name_len']=z.item_name.astype(str).str.len()
     z=z.sort_values(['symbol','period_q','metric','name_len']).drop_duplicates(['symbol','period_q','metric'])
     return z.pivot(index=['symbol','period_q'],columns='metric',values='value').reset_index()
