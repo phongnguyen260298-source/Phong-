@@ -1,0 +1,167 @@
+name: GPR Bronze full refresh and validation
+
+on:
+  push:
+    paths:
+      - '.github/workflows/gpr-bronze-full-refresh.yml'
+      - 'scripts/gpr_bronze_refresh_fundamental_shard.py'
+      - 'scripts/gpr_bronze_refresh_price_shard.py'
+      - 'scripts/gpr_bronze_refresh_compare_v1.py'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  VNSTOCK_API_KEY: ${{ secrets.VNSTOCK_API_KEY }}
+  N_SHARDS: 4
+
+jobs:
+  fundamentals:
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        shard: [0,1,2,3]
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Download locked baseline artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: vn-research-v42-vci-full
+          path: input/vci42
+          repository: phongnguyen260298-source/Phong-
+          run-id: 34329813990
+          github-token: ${{ github.token }}
+      - name: Install VNStock Bronze
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$VNSTOCK_API_KEY"
+          VENV="$RUNNER_TEMP/vnstock-venv"
+          python -m pip install --upgrade pip requests setuptools wheel
+          wget -q https://vnstocks.com/files/vnstock-cli-installer.run -O installer.run
+          chmod +x installer.run
+          ./installer.run -- --non-interactive --api-key "$VNSTOCK_API_KEY" --venv-path "$VENV" --language en
+          "$VENV/bin/python" -m ensurepip --upgrade
+          "$VENV/bin/python" -m pip install 'pandas>=2.2,<3' 'numpy<2.3' pyarrow
+      - name: Fetch full fundamentals at paid-rate pacing
+        env:
+          SHARD: ${{ matrix.shard }}
+          N_SHARDS: 4
+          REQUEST_PAUSE: 1.6
+        run: "$RUNNER_TEMP/vnstock-venv/bin/python scripts/gpr_bronze_refresh_fundamental_shard.py"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bronze-fundamental-${{ matrix.shard }}
+          path: data/gpr_bronze_refresh/fundamental_shards/*_${{ matrix.shard }}.*
+          retention-days: 14
+
+  prices:
+    needs: fundamentals
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        shard: [0,1,2,3]
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Download locked baseline artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: vn-research-v42-vci-full
+          path: input/vci42
+          repository: phongnguyen260298-source/Phong-
+          run-id: 34329813990
+          github-token: ${{ github.token }}
+      - name: Install VNStock Bronze
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$VNSTOCK_API_KEY"
+          VENV="$RUNNER_TEMP/vnstock-venv"
+          python -m pip install --upgrade pip requests setuptools wheel
+          wget -q https://vnstocks.com/files/vnstock-cli-installer.run -O installer.run
+          chmod +x installer.run
+          ./installer.run -- --non-interactive --api-key "$VNSTOCK_API_KEY" --venv-path "$VENV" --language en
+          "$VENV/bin/python" -m ensurepip --upgrade
+          "$VENV/bin/python" -m pip install 'pandas>=2.2,<3' 'numpy<2.3' pyarrow
+      - name: Fetch full prices at paid-rate pacing
+        env:
+          SHARD: ${{ matrix.shard }}
+          N_SHARDS: 4
+          REQUEST_PAUSE: 1.6
+        run: "$RUNNER_TEMP/vnstock-venv/bin/python scripts/gpr_bronze_refresh_price_shard.py"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bronze-price-${{ matrix.shard }}
+          path: data/gpr_bronze_refresh/price_shards/*_${{ matrix.shard }}.*
+          retention-days: 14
+
+  validate:
+    needs: [fundamentals,prices]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Install analysis stack
+        run: python -m pip install --upgrade pip 'pandas>=2.2,<3' 'numpy<2.3' pyarrow scipy linearmodels
+      - name: Download locked baseline artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: vn-research-v42-vci-full
+          path: input/vci42
+          repository: phongnguyen260298-source/Phong-
+          run-id: 34329813990
+          github-token: ${{ github.token }}
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: bronze-fundamental-*
+          path: data/gpr_bronze_refresh/fundamental_shards
+          merge-multiple: true
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: bronze-price-*
+          path: data/gpr_bronze_refresh/price_shards
+          merge-multiple: true
+      - name: Validate refreshed data, groups, DID and AI-GPR measurement
+        run: python scripts/gpr_bronze_refresh_compare_v1.py
+      - name: Price QA
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json,pandas as pd
+          from pathlib import Path
+          fs=list(Path('data/gpr_bronze_refresh/price_shards').glob('price_shard_*.parquet'))
+          if not fs: raise RuntimeError('No refreshed price shards')
+          p=pd.concat([pd.read_parquet(f) for f in fs],ignore_index=True)
+          p['date']=pd.to_datetime(p.date,errors='coerce')
+          q={'rows':len(p),'symbols':p.symbol.nunique(),'start':str(p.date.min().date()),'end':str(p.date.max().date()),'duplicate_symbol_date':int(p.duplicated(['symbol','date']).sum()),'missing_close':float(p.close.isna().mean())}
+          Path('data/gpr_bronze_refresh/final/price_qa.json').write_text(json.dumps(q,indent=2),encoding='utf-8'); print(q)
+          PY
+      - name: Commit refreshed validation outputs
+        if: success()
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/gpr_bronze_refresh/final || true
+          if git diff --cached --quiet; then echo 'No changes'; else git commit -m 'Add Bronze refreshed GPR validation results'; git pull --rebase origin main; git push; fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: gpr-bronze-full-refresh-final
+          path: data/gpr_bronze_refresh/
+          retention-days: 30
