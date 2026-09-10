@@ -1,0 +1,128 @@
+name: GPR market from completed Bronze artifact
+
+on:
+  push:
+    paths:
+      - '.github/workflows/gpr-market-from-bronze-artifact.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  analyze_market:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download completed Bronze artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: gpr-bronze-continue-final
+          path: input/bronze_continue
+          repository: phongnguyen260298-source/Phong-
+          run-id: 34457103163
+          github-token: ${{ github.token }}
+
+      - name: Install analysis stack
+        run: python -m pip install --upgrade pip 'pandas>=2.2,<3' 'numpy<2.3' pyarrow scipy statsmodels linearmodels requests
+
+      - name: Convert Bronze price parquet shards to market analyzer format
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p data/gpr_market_top5_v4/shards
+          python - <<'PY'
+          from pathlib import Path
+          import pandas as pd
+          roots=[Path('input/bronze_continue/price_shards'),Path('input/bronze_continue')]
+          fs=[]
+          for r in roots:
+              fs.extend(sorted(r.glob('price_shard_*.parquet')))
+          if not fs:
+              fs=sorted(Path('input/bronze_continue').rglob('price_shard_*.parquet'))
+          if len(fs) != 4:
+              raise RuntimeError(f'Expected 4 Bronze price shards, found {len(fs)}: {fs}')
+          out=Path('data/gpr_market_top5_v4/shards')
+          for i,f in enumerate(fs):
+              d=pd.read_parquet(f)
+              need={'symbol','date','close'}
+              miss=need-set(d.columns)
+              if miss: raise RuntimeError(f'{f} missing {miss}')
+              d['symbol']=d['symbol'].astype(str).str.upper().str.strip()
+              d['date']=pd.to_datetime(d['date'],errors='coerce').dt.normalize()
+              d['close']=pd.to_numeric(d['close'],errors='coerce')
+              d=d.dropna(subset=['symbol','date','close']).drop_duplicates(['symbol','date']).sort_values(['symbol','date'])
+              d.to_csv(out/f'price_shard_{i}.csv.gz',index=False,compression='gzip')
+              print(i, f, len(d), d.symbol.nunique(), d.date.min(), d.date.max())
+          PY
+
+      - name: Run HAC BH-FDR and Threat Acts event study
+        run: python scripts/gpr_market_top5_analyze_v3.py
+
+      - name: Scientific QA gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, pandas as pd
+          from pathlib import Path
+          p=Path('data/gpr_market_top5_v4')
+          s=json.loads((p/'summary.json').read_text())
+          reg=pd.read_csv(p/'group_spread_regressions.csv')
+          ev=pd.read_csv(p/'event_car_summary.csv')
+          cov=pd.read_csv(p/'group_coverage.csv')
+          assert s['symbols_price_ok'] >= 300, s
+          assert s['price_start'] <= '2020-01-10', s
+          assert s['price_end'] >= '2025-12-20', s
+          assert s['duplicate_symbol_date_rows'] == 0, s
+          assert s['median_bars_per_symbol'] >= 500, s
+          assert reg['q_fdr'].notna().any()
+          assert {'post1','post5','post20','pre5'}.issubset(set(ev['horizon']))
+          assert (cov['treated_price']>0).all() and (cov['control_price']>0).all()
+          qa={
+            'symbols_price_ok':s['symbols_price_ok'],
+            'price_rows_unique':s['price_rows_unique'],
+            'price_start':s['price_start'],
+            'price_end':s['price_end'],
+            'median_bars_per_symbol':s['median_bars_per_symbol'],
+            'duplicate_symbol_date_rows':s['duplicate_symbol_date_rows'],
+            'gpr_start':s['gpr_start'],'gpr_end':s['gpr_end'],
+            'effective_cohort_note':'vci578_preexposure.csv is the pre-treatment-exposure subset and must not be described as 578 unless its actual unique-symbol count is 578.',
+            'causal_wording':'Market tests are associational/event-study evidence; causal claims require identification beyond timing and controls.'
+          }
+          (p/'scientific_qa.json').write_text(json.dumps(qa,indent=2),encoding='utf-8')
+          print(json.dumps(qa,indent=2))
+          PY
+
+      - name: Run market reaction to future CFO linkage
+        run: python scripts/gpr_market_future_cfo_v1.py
+
+      - name: Commit market and linkage outputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/gpr_market_top5_v4 data/gpr_market_future_cfo_v1
+          if git diff --cached --quiet; then
+            echo 'No changes'
+          else
+            git commit -m 'Add completed GPR market and future CFO results'
+            git pull --rebase origin main
+            git push
+          fi
+
+      - name: Upload final market outputs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gpr-market-from-bronze-final
+          path: |
+            data/gpr_market_top5_v4/
+            data/gpr_market_future_cfo_v1/
+          retention-days: 30
