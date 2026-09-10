@@ -1,59 +1,140 @@
 from __future__ import annotations
-import os, time
+
+import os
+import random
+import time
 from pathlib import Path
+
 import pandas as pd
 from vnstock_data import Quote
 
-SHARD=int(os.getenv('SHARD','0'))
-N_SHARDS=int(os.getenv('N_SHARDS','4'))
-PAUSE=float(os.getenv('REQUEST_PAUSE','1.5'))
-OUT=Path('data/gpr_market_top5_v4/shards'); OUT.mkdir(parents=True, exist_ok=True)
-base=pd.read_csv('data/research_cohorts/vci578_preexposure.csv')
-base['symbol']=base['symbol'].astype(str).str.upper()
-symbols=base.symbol.dropna().drop_duplicates().tolist()
-symbols=[s for i,s in enumerate(symbols) if i % N_SHARDS == SHARD]
+SHARD = int(os.getenv("SHARD", "0"))
+N_SHARDS = int(os.getenv("N_SHARDS", "4"))
+# 1.6s per shard => theoretical aggregate ceiling ~150 requests/minute at 4 shards,
+# leaving headroom below the Bronze 180 requests/minute limit.
+MIN_REQUEST_INTERVAL = float(os.getenv("REQUEST_INTERVAL", "1.6"))
+MAX_RETRIES = int(os.getenv("MAX_RETRIES", "6"))
+OUT = Path("data/gpr_market_top5_v4/shards")
+OUT.mkdir(parents=True, exist_ok=True)
 
-START='2020-01-01'
-END='2025-12-31'
+base = pd.read_csv("data/research_cohorts/vci578_preexposure.csv")
+base["symbol"] = base["symbol"].astype(str).str.upper().str.strip()
+all_symbols = base["symbol"].dropna().drop_duplicates().tolist()
+symbols = [s for i, s in enumerate(all_symbols) if i % N_SHARDS == SHARD]
 
-def fetch_one(sym):
-    last=None
-    for k in range(5):
+START = "2020-01-01"
+END = "2025-12-31"
+
+# Reuse the adapter inside a shard instead of rebuilding it for every symbol.
+quote = Quote(source="VCI")
+_next_request_at = 0.0
+
+
+def pace_request() -> None:
+    """Keep request starts evenly spaced across each shard."""
+    global _next_request_at
+    now = time.monotonic()
+    if now < _next_request_at:
+        time.sleep(_next_request_at - now)
+    # Tiny jitter prevents four runners from remaining perfectly synchronized.
+    _next_request_at = time.monotonic() + MIN_REQUEST_INTERVAL + random.uniform(0.0, 0.08)
+
+
+def normalize_history(sym: str, df: pd.DataFrame) -> pd.DataFrame:
+    tc = next((c for c in ["time", "date", "trading_date"] if c in df.columns), None)
+    cc = next((c for c in ["close", "Close", "close_price"] if c in df.columns), None)
+    if tc is None or cc is None:
+        raise ValueError(f"Unexpected schema={list(df.columns)}")
+
+    z = df[[tc, cc]].rename(columns={tc: "date", cc: "close"}).copy()
+    z["date"] = pd.to_datetime(z["date"], errors="coerce").dt.normalize()
+    z["close"] = pd.to_numeric(z["close"], errors="coerce")
+    z = z.dropna(subset=["date", "close"]).drop_duplicates("date").sort_values("date")
+    z["symbol"] = sym
+    return z[["symbol", "date", "close"]]
+
+
+def fetch_one(sym: str):
+    last = None
+    for attempt in range(MAX_RETRIES):
         try:
-            q=Quote(source='VCI', symbol=sym)
-            df=q.history(start=START, end=END, interval='1D')
+            pace_request()
+            df = quote.history(symbol=sym, start=START, end=END, interval="1D")
             if df is None or df.empty:
-                return sym,None,'EMPTY'
-            tc=next((c for c in ['time','date','trading_date'] if c in df.columns),None)
-            cc=next((c for c in ['close','Close','close_price'] if c in df.columns),None)
-            if tc is None or cc is None:
-                return sym,None,f'schema={list(df.columns)}'
-            z=df[[tc,cc]].rename(columns={tc:'date',cc:'close'}).copy()
-            z['date']=pd.to_datetime(z['date'],errors='coerce').dt.normalize()
-            z['close']=pd.to_numeric(z['close'],errors='coerce')
-            z=z.dropna().drop_duplicates('date').sort_values('date')
-            z['symbol']=sym
-            return sym,z,None
-        except BaseException as e:
-            last=e
-            msg=str(e).lower()
-            if 'limit' in msg or 'rate' in msg:
-                time.sleep(25 + 15*k)
+                return sym, None, "EMPTY"
+            z = normalize_history(sym, df)
+            if z.empty:
+                return sym, None, "EMPTY_AFTER_NORMALIZE"
+            return sym, z, None
+        except BaseException as exc:
+            last = exc
+            msg = str(exc).lower()
+            is_rate = any(k in msg for k in ["limit", "rate", "429", "too many request"])
+            if is_rate:
+                # Back off aggressively on rate-limit; jitter avoids synchronized retries.
+                wait = min(90.0, 12.0 * (2 ** attempt)) + random.uniform(0.5, 3.0)
             else:
-                time.sleep(5*(k+1))
-    return sym,None,f'{type(last).__name__}:{last}'
+                wait = min(30.0, 3.0 * (attempt + 1)) + random.uniform(0.2, 1.0)
+            print(
+                f"shard {SHARD} retry {attempt + 1}/{MAX_RETRIES} {sym}: "
+                f"{type(exc).__name__}: {exc}; sleep={wait:.1f}s",
+                flush=True,
+            )
+            time.sleep(wait)
 
-frames=[]; errors=[]
-for i,sym in enumerate(symbols,1):
-    sym,z,e=fetch_one(sym)
+    return sym, None, f"{type(last).__name__}:{last}"
+
+
+frames = []
+errors = []
+coverage = []
+started = time.monotonic()
+
+for i, sym in enumerate(symbols, 1):
+    sym, z, err = fetch_one(sym)
     if z is not None:
         frames.append(z)
+        coverage.append(
+            {
+                "symbol": sym,
+                "rows": len(z),
+                "min_date": z["date"].min(),
+                "max_date": z["date"].max(),
+            }
+        )
     else:
-        errors.append({'symbol':sym,'error':e})
-    print(f'shard {SHARD} {i}/{len(symbols)} {sym} rows={0 if z is None else len(z)} ok={z is not None}',flush=True)
-    time.sleep(PAUSE)
+        errors.append({"symbol": sym, "error": err})
+
+    elapsed = max(time.monotonic() - started, 1e-9)
+    rpm = i / elapsed * 60.0
+    print(
+        f"shard {SHARD} {i}/{len(symbols)} {sym} "
+        f"rows={0 if z is None else len(z)} ok={z is not None} avg_rpm={rpm:.1f}",
+        flush=True,
+    )
 
 if frames:
-    pd.concat(frames,ignore_index=True).to_csv(OUT/f'price_shard_{SHARD}.csv.gz',index=False,compression='gzip')
-pd.DataFrame(errors).to_csv(OUT/f'errors_shard_{SHARD}.csv',index=False)
-print({'shard':SHARD,'target':len(symbols),'ok':len(frames),'errors':len(errors)},flush=True)
+    prices = pd.concat(frames, ignore_index=True)
+    prices = prices.drop_duplicates(["symbol", "date"]).sort_values(["symbol", "date"])
+    prices.to_csv(OUT / f"price_shard_{SHARD}.csv.gz", index=False, compression="gzip")
+
+pd.DataFrame(errors, columns=["symbol", "error"]).to_csv(
+    OUT / f"errors_shard_{SHARD}.csv", index=False
+)
+pd.DataFrame(coverage, columns=["symbol", "rows", "min_date", "max_date"]).to_csv(
+    OUT / f"coverage_shard_{SHARD}.csv", index=False
+)
+
+elapsed = time.monotonic() - started
+print(
+    {
+        "shard": SHARD,
+        "cohort_total": len(all_symbols),
+        "target": len(symbols),
+        "ok": len(frames),
+        "errors": len(errors),
+        "elapsed_sec": round(elapsed, 1),
+        "avg_requests_per_min": round(len(symbols) / max(elapsed, 1e-9) * 60.0, 1),
+    },
+    flush=True,
+)
