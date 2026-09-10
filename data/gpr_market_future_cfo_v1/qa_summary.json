@@ -1,0 +1,55 @@
+{
+  "market_symbols": 378,
+  "group_file_symbols": 578,
+  "cfo_symbols_2020_2025": 578,
+  "linkage_symbols": 325,
+  "linkage_rows": 7777,
+  "duplicate_symbol_quarter": 0,
+  "market_start": "2020-01-02",
+  "market_end": "2025-12-31",
+  "cfo_period_min": "2020Q1",
+  "cfo_period_max": "2025Q4",
+  "cfo_next_nonmissing": 7404,
+  "missing_rate": {
+    "cfo_assets": 0.006557798637006558,
+    "cfo_next": 0.04796193905104796,
+    "log_assets": 0.0,
+    "leverage": 0.0,
+    "THREATS_z": 0.0,
+    "ACTS_z": 0.0,
+    "event5_THREATS_z": 0.5147229008615147,
+    "event5_ACTS_z": 0.633020444901633
+  },
+  "groups": {
+    "HighLiab_TopTercile": {
+      "classified_symbols": 325,
+      "treated_symbols": 103,
+      "control_symbols": 222,
+      "missing_symbols": 0
+    },
+    "CashConversionTrap": {
+      "classified_symbols": 325,
+      "treated_symbols": 33,
+      "control_symbols": 292,
+      "missing_symbols": 0
+    },
+    "DoubleExposure_TopTercile": {
+      "classified_symbols": 325,
+      "treated_symbols": 53,
+      "control_symbols": 272,
+      "missing_symbols": 0
+    },
+    "FragileLowMarginFunding": {
+      "classified_symbols": 325,
+      "treated_symbols": 36,
+      "control_symbols": 289,
+      "missing_symbols": 0
+    },
+    "AssetCommitmentMismatch": {
+      "classified_symbols": 325,
+      "treated_symbols": 32,
+      "control_symbols": 293,
+      "missing_symbols": 0
+    }
+  }
+}
