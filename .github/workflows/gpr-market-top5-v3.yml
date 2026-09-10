@@ -30,16 +30,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-
       - name: Check VNStock API key secret
         shell: bash
         run: |
           set -euo pipefail
-          if [ -z "$VNSTOCK_API_KEY" ]; then
-            echo "::error::Repository secret VNSTOCK_API_KEY is not configured."
-            exit 2
-          fi
-
+          if [ -z "$VNSTOCK_API_KEY" ]; then echo "::error::Repository secret VNSTOCK_API_KEY is not configured."; exit 2; fi
       - name: Install VNStock Bronze once
         shell: bash
         run: |
@@ -53,34 +48,29 @@ jobs:
           "$VENV_PATH/bin/python" -m pip install --upgrade 'pip<27' 'pandas>=2.2,<3' 'numpy<2.3' statsmodels scipy requests
           "$VENV_PATH/bin/python" - <<'PY'
           from vnstock_data import Quote
-          q = Quote(source='VCI', symbol='HPG')
-          df = q.history(start='2025-01-01', end='2025-12-31', interval='1D')
-          print('Bronze Quote import OK; HPG rows=', len(df))
-          if df is None or df.empty:
-              raise RuntimeError('Bronze smoke test returned no HPG rows')
+          df=Quote(source='VCI',symbol='HPG').history(start='2025-01-01',end='2025-12-31',interval='1D')
+          print('Bronze Quote import OK; HPG rows=',len(df))
+          if df is None or df.empty: raise RuntimeError('Bronze smoke test returned no HPG rows')
           PY
-
       - name: Fetch all full-history shards on same authenticated device
         shell: bash
         run: |
           set -euo pipefail
           VENV_PATH="$RUNNER_TEMP/vnstock-venv"
-          rm -rf data/gpr_market_top5_v4/shards
-          mkdir -p data/gpr_market_top5_v4/shards
+          rm -rf data/gpr_market_top5_v4/shards; mkdir -p data/gpr_market_top5_v4/shards
           for SHARD in 0 1 2 3; do
             echo "=== Fetch shard $SHARD/3 ==="
-            SHARD="$SHARD" N_SHARDS=4 REQUEST_INTERVAL=0.45 MAX_RETRIES=6 \
-              "$VENV_PATH/bin/python" scripts/gpr_market_top5_fetch_shard.py
+            SHARD="$SHARD" N_SHARDS=4 REQUEST_INTERVAL=0.45 MAX_RETRIES=6 "$VENV_PATH/bin/python" scripts/gpr_market_top5_fetch_shard.py
           done
-
       - name: Verify full-history shard coverage
         shell: bash
         run: |
           set -euo pipefail
+          VENV_PATH="$RUNNER_TEMP/vnstock-venv"
           find data/gpr_market_top5_v4/shards -maxdepth 1 -type f -print
           test "$(find data/gpr_market_top5_v4/shards -name 'price_shard_*.csv.gz' | wc -l)" -eq 4
           test "$(find data/gpr_market_top5_v4/shards -name 'coverage_shard_*.csv' | wc -l)" -eq 4
-          python - <<'PY'
+          "$VENV_PATH/bin/python" - <<'PY'
           from pathlib import Path
           import pandas as pd
           p=Path('data/gpr_market_top5_v4/shards')
@@ -88,19 +78,14 @@ jobs:
           print('coverage rows=',len(cov),'firms=',cov.symbol.nunique())
           print('median bars=',cov['n'].median(),'min bars=',cov['n'].min(),'max bars=',cov['n'].max())
           print('start=',cov['start'].min(),'end=',cov['end'].max())
-          if cov.symbol.nunique() < 300:
-              raise RuntimeError('Insufficient symbol coverage (<300 firms)')
-          if cov['n'].median() < 500:
-              raise RuntimeError('Full-history extraction still appears truncated (median bars <500)')
+          if cov.symbol.nunique()<300: raise RuntimeError('Insufficient symbol coverage (<300 firms)')
+          if cov['n'].median()<500: raise RuntimeError('Full-history extraction still appears truncated (median bars <500)')
           PY
-
       - name: Analyze Top5 market reactions
         shell: bash
         run: |
           set -euo pipefail
-          VENV_PATH="$RUNNER_TEMP/vnstock-venv"
-          "$VENV_PATH/bin/python" scripts/gpr_market_top5_analyze_v3.py
-
+          "$RUNNER_TEMP/vnstock-venv/bin/python" scripts/gpr_market_top5_analyze_v3.py
       - name: Scientific QA gate
         shell: bash
         run: |
@@ -108,59 +93,26 @@ jobs:
           VENV_PATH="$RUNNER_TEMP/vnstock-venv"
           "$VENV_PATH/bin/python" - <<'PY'
           from pathlib import Path
-          import json, pandas as pd, numpy as np
+          import json,pandas as pd,numpy as np
           root=Path('data/gpr_market_top5_v4')
           px=pd.read_csv(root/'daily_price_panel.csv.gz',compression='gzip',parse_dates=['date'])
-          grp=pd.read_csv(root/'group_coverage.csv')
-          reg=pd.read_csv(root/'group_spread_regressions.csv')
-          ev=pd.read_csv(root/'event_car_by_group.csv')
-          pre=pd.read_csv('data/research_cohorts/vci578_preexposure.csv')
-          beh=pd.read_csv('data/research_cohorts/vci578_behavioral_groups.csv')
-          qa={
-            'price_rows':int(len(px)),
-            'price_firms':int(px.symbol.nunique()),
-            'price_start':str(px.date.min().date()),
-            'price_end':str(px.date.max().date()),
-            'duplicate_symbol_date':int(px.duplicated(['symbol','date']).sum()),
-            'missing_close':float(px.close.isna().mean()),
-            'missing_return':float(px.ret.isna().mean()),
-            'preexposure_rows':int(len(pre)),
-            'preexposure_firms':int(pre.symbol.astype(str).str.upper().nunique()),
-            'behavioral_group_rows':int(len(beh)),
-            'behavioral_group_firms':int(beh.symbol.astype(str).str.upper().nunique()),
-            'effective_base_overlap':int(len(set(pre.symbol.astype(str).str.upper()) & set(beh.symbol.astype(str).str.upper()))),
-            'group_coverage':grp.to_dict('records'),
-            'regression_tests':int(reg.p.notna().sum()) if 'p' in reg else 0,
-            'fdr_significant_5pct':int((pd.to_numeric(reg.get('q_fdr'),errors='coerce')<0.05).sum()) if 'q_fdr' in reg else 0,
-            'event_rows':int(len(ev)),
-            'pre5_rows':int((ev.horizon=='pre5').sum()) if 'horizon' in ev else 0,
-            'post_rows':int((ev.horizon!='pre5').sum()) if 'horizon' in ev else 0,
-          }
-          if qa['duplicate_symbol_date'] != 0: raise RuntimeError('Duplicate symbol-date rows remain')
-          if qa['price_firms'] < 300: raise RuntimeError('Price firm coverage too low')
-          if qa['price_start'] > '2020-03-31': raise RuntimeError('Price history does not reach early 2020')
-          if qa['price_end'] < '2025-09-30': raise RuntimeError('Price history ends too early')
-          if qa['preexposure_firms'] != 378:
-              print('WARNING: preexposure firm count differs from locked 378 subset:',qa['preexposure_firms'])
-          (root/'scientific_qa.json').write_text(json.dumps(qa,ensure_ascii=False,indent=2),encoding='utf-8')
-          print(json.dumps(qa,ensure_ascii=False,indent=2))
+          grp=pd.read_csv(root/'group_coverage.csv'); reg=pd.read_csv(root/'group_spread_regressions.csv'); ev=pd.read_csv(root/'event_car_by_group.csv')
+          pre=pd.read_csv('data/research_cohorts/vci578_preexposure.csv'); beh=pd.read_csv('data/research_cohorts/vci578_behavioral_groups.csv')
+          qa={'price_rows':int(len(px)),'price_firms':int(px.symbol.nunique()),'price_start':str(px.date.min().date()),'price_end':str(px.date.max().date()),'duplicate_symbol_date':int(px.duplicated(['symbol','date']).sum()),'missing_close':float(px.close.isna().mean()),'missing_return':float(px.ret.isna().mean()),'preexposure_rows':int(len(pre)),'preexposure_firms':int(pre.symbol.astype(str).str.upper().nunique()),'behavioral_group_rows':int(len(beh)),'behavioral_group_firms':int(beh.symbol.astype(str).str.upper().nunique()),'effective_base_overlap':int(len(set(pre.symbol.astype(str).str.upper()) & set(beh.symbol.astype(str).str.upper()))),'group_coverage':grp.to_dict('records'),'regression_tests':int(reg.p.notna().sum()) if 'p' in reg else 0,'fdr_significant_5pct':int((pd.to_numeric(reg.get('q_fdr'),errors='coerce')<0.05).sum()) if 'q_fdr' in reg else 0,'event_rows':int(len(ev)),'pre5_rows':int((ev.horizon=='pre5').sum()) if 'horizon' in ev else 0,'post_rows':int((ev.horizon!='pre5').sum()) if 'horizon' in ev else 0}
+          if qa['duplicate_symbol_date']!=0: raise RuntimeError('Duplicate symbol-date rows remain')
+          if qa['price_firms']<300: raise RuntimeError('Price firm coverage too low')
+          if qa['price_start']>'2020-03-31': raise RuntimeError('Price history does not reach early 2020')
+          if qa['price_end']<'2025-09-30': raise RuntimeError('Price history ends too early')
+          if qa['preexposure_firms']!=378: print('WARNING: preexposure firm count differs from locked 378 subset:',qa['preexposure_firms'])
+          (root/'scientific_qa.json').write_text(json.dumps(qa,ensure_ascii=False,indent=2),encoding='utf-8'); print(json.dumps(qa,ensure_ascii=False,indent=2))
           PY
-
       - name: Commit final outputs
         if: success()
         shell: bash
         run: |
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git config user.name 'github-actions[bot]'; git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add data/gpr_market_top5_v4/ || true
-          if git diff --cached --quiet; then
-            echo 'No changes'
-          else
-            git commit -m 'Add single-device Bronze full-history GPR market results'
-            git pull --rebase origin main
-            git push
-          fi
-
+          if git diff --cached --quiet; then echo 'No changes'; else git commit -m 'Add single-device Bronze full-history GPR market results'; git pull --rebase origin main; git push; fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
