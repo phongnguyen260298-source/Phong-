@@ -21,8 +21,37 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+
       - name: Install analysis stack
         run: python -m pip install --upgrade pip 'pandas>=2.2,<3' 'numpy<2.3' scipy statsmodels linearmodels pyarrow openpyxl
+
+      - name: Download completed market artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: gpr-market-from-bronze-final
+          path: input/completed_market
+          repository: phongnguyen260298-source/Phong-
+          run-id: 34463852474
+          github-token: ${{ github.token }}
+
+      - name: Restore completed market outputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          SRC="$(find input/completed_market -type f -name 'daily_price_panel.csv.gz' -print -quit)"
+          if [ -z "$SRC" ]; then
+            echo '::error::daily_price_panel.csv.gz not found in completed market artifact'
+            find input/completed_market -maxdepth 5 -type f | sort | head -200
+            exit 1
+          fi
+          SRC_DIR="$(dirname "$SRC")"
+          mkdir -p data/gpr_market_top5_v4
+          cp -a "$SRC_DIR"/. data/gpr_market_top5_v4/
+          test -f data/gpr_market_top5_v4/ai_gpr_data_daily.csv
+          test -f data/gpr_market_top5_v4/top_event_dates.csv
+          test -f data/gpr_market_top5_v4/scientific_qa.json
+          echo "Restored market outputs from $SRC_DIR"
+
       - name: Download locked VCI v4.2 fundamental artifact
         uses: actions/download-artifact@v4
         with:
@@ -30,20 +59,66 @@ jobs:
           path: input/vci42
           repository: phongnguyen260298-source/Phong-
           run-id: 34329813990
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ github.token }}
+
       - name: Build CFO panel from exact VCI item ids
         run: python scripts/build_cfo_linkage_panel.py
+
+      - name: QA CFO linkage panel
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, pandas as pd
+          from pathlib import Path
+          p=Path('output/xy_screen/vci42_analysis_panel_2020_2025.csv')
+          q=Path('output/xy_screen/cfo_linkage_builder_qa.json')
+          assert p.exists(), p
+          assert q.exists(), q
+          d=pd.read_csv(p)
+          qa=json.loads(q.read_text())
+          assert d.symbol.nunique() >= 300, qa
+          assert d.duplicated(['symbol','period_q']).sum() == 0, qa
+          assert d.period_q.astype(str).min().startswith('2020'), qa
+          assert d.period_q.astype(str).max().startswith('2025'), qa
+          print(json.dumps(qa,ensure_ascii=False,indent=2))
+          PY
+
       - name: Run market reaction to future CFO linkage
         run: python scripts/gpr_market_future_cfo_v1.py
+
+      - name: QA predictive linkage outputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, pandas as pd
+          from pathlib import Path
+          root=Path('data/gpr_market_future_cfo_v1')
+          r=pd.read_csv(root/'market_future_cfo_results.csv')
+          s=json.loads((root/'summary.json').read_text())
+          qa=s['qa']
+          assert qa['linkage_symbols'] >= 200, qa
+          assert qa['duplicate_symbol_quarter'] == 0, qa
+          assert qa['cfo_next_nonmissing'] > 0, qa
+          assert {'primary','winsor_1_99','event_car5','reverse_timing_placebo'}.issubset(set(r.spec)), r.spec.unique()
+          assert r.loc[r.spec=='primary','q_fdr_interaction'].notna().any()
+          print(r.to_string(index=False))
+          print(json.dumps(qa,ensure_ascii=False,indent=2))
+          PY
+
       - name: Commit linkage outputs
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add data/gpr_market_future_cfo_v1/ || true
+          git add data/gpr_market_future_cfo_v1/ output/xy_screen/cfo_linkage_builder_qa.json || true
           if git diff --cached --quiet; then echo 'No changes'; else git commit -m 'Add market reaction to future CFO results'; git pull --rebase origin main; git push; fi
+
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: gpr-market-future-cfo-results
-          path: data/gpr_market_future_cfo_v1/
+          path: |
+            data/gpr_market_future_cfo_v1/
+            output/xy_screen/cfo_linkage_builder_qa.json
           retention-days: 30
