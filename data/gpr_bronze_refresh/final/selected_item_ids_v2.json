@@ -1,0 +1,12 @@
+{
+  "assets": "BS_TOTAL_ASSETS",
+  "liabilities": "BS_TOTAL_LIABILITIES",
+  "current_liab": "BS_SHORT_TERM_LIABILITIES",
+  "inventory": "BS_INVENTORIES",
+  "receivables": "BS_SHORT_TERM_RECEIVABLES",
+  "payables": "BS_TRADE_ACCOUNTS_PAYABLE",
+  "fixed_assets": "BS_FIXED_ASSETS",
+  "revenue": "IS_REVENUE",
+  "operating_profit": "IS_OPERATING_PROFIT",
+  "cfo": "CF_NET_CASH_FLOWS_FROM_OPERATING_ACTIVITIES"
+}

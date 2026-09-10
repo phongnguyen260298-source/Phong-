@@ -1,0 +1,9 @@
+{
+  "baseline_refresh_exact_match": true,
+  "analysis_firms": 567,
+  "analysis_rows": 13603,
+  "duplicate_symbol_quarter": 0,
+  "selected_direction": "Acts × HighLiab — realization",
+  "selection_rule": "PASS requires q<0.05, joint pretrend p>=0.10, treated firms>=50; rank PASS candidates by q then treated sample. No p-hacking; negative/null results retained.",
+  "measurement_note": "AI_GPR/Threat/Acts are AI-derived geopolitical-risk measures, not firm AI adoption or an AI economic shock."
+}
