@@ -1,0 +1,81 @@
+{
+  "qa": {
+    "panel_symbols": 578,
+    "exposure_symbols": 378,
+    "overlap_symbols": 325,
+    "panel_to_exposure_coverage": 0.5622837370242214,
+    "cut_toptercile_all378": 0.5194141971286548,
+    "cut_toptercile_overlap325": 0.5457482618720418,
+    "primary_treated_firms": 112,
+    "primary_control_firms": 213,
+    "overlap_treated_firms": 109,
+    "duplicates": 0,
+    "period_min": "2020Q1",
+    "period_max": "2025Q4",
+    "pretrend_valid_terms": [
+      "e_m7",
+      "e_m4",
+      "e_m3",
+      "e_m2"
+    ],
+    "pretrend_individual_sig_5pct": [
+      {
+        "rel_q": -4,
+        "term": "e_m4",
+        "beta": -0.006451743965552614,
+        "se": 0.0017738002137723619,
+        "p": 0.0002774500584878936
+      }
+    ],
+    "pretrend_joint_wald_stat_pinv": 2.1025153041135,
+    "pretrend_joint_df_rank": 4,
+    "pretrend_joint_p_pinv": 0.7169102946989286
+  },
+  "acts_toptercile_current_exactpanel": {
+    "n": 7749,
+    "firms": 325,
+    "beta": -0.0018493515938890134,
+    "se": 0.001592505485049439,
+    "p": 0.2455637704267739,
+    "r2_within": 0.002997779659065003,
+    "cov": "twoway",
+    "spec": "Acts_locked_all378",
+    "group": "HighLiab_TopTercile"
+  },
+  "did_toptercile_current_exactpanel": {
+    "n": 7749,
+    "firms": 325,
+    "beta": -0.0005672105389097665,
+    "se": 0.003329502399656686,
+    "p": 0.86473250976952,
+    "r2_within": 0.0031087857505307515,
+    "cov": "twoway",
+    "spec": "DID_Post2022_locked_all378",
+    "group": "HighLiab_TopTercile"
+  },
+  "placebo_fake2021": {
+    "n": 2584,
+    "firms": 325,
+    "beta": -0.0021780715390333143,
+    "se": 0.0013695867317179403,
+    "p": 0.11190476229651591,
+    "r2_within": 0.009605846033329812,
+    "cov": "twoway",
+    "spec": "PLACEBO_Fake2021_locked_all378",
+    "group": "HighLiab_TopTercile"
+  },
+  "old_locked_reference": {
+    "acts_beta": -0.004472,
+    "acts_p": 0.000392,
+    "did_p": 0.001569,
+    "pretrend_p": 0.680634,
+    "group_label": "HighLiab_TopTercile"
+  },
+  "replication_gap": {
+    "acts_beta_difference": 0.002622648406110987,
+    "acts_p_current": 0.2455637704267739,
+    "did_p_current": 0.86473250976952
+  },
+  "pretrend_pass": false,
+  "interpretation": "If current exact-panel TopTercile fails to reproduce old locked results, old corporate evidence is not portable to the refreshed exact-item-ID panel and must not anchor the thesis without lineage reconciliation."
+}

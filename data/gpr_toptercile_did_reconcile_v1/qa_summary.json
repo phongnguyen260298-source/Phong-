@@ -1,0 +1,32 @@
+{
+  "panel_symbols": 578,
+  "exposure_symbols": 378,
+  "overlap_symbols": 325,
+  "panel_to_exposure_coverage": 0.5622837370242214,
+  "cut_toptercile_all378": 0.5194141971286548,
+  "cut_toptercile_overlap325": 0.5457482618720418,
+  "primary_treated_firms": 112,
+  "primary_control_firms": 213,
+  "overlap_treated_firms": 109,
+  "duplicates": 0,
+  "period_min": "2020Q1",
+  "period_max": "2025Q4",
+  "pretrend_valid_terms": [
+    "e_m7",
+    "e_m4",
+    "e_m3",
+    "e_m2"
+  ],
+  "pretrend_individual_sig_5pct": [
+    {
+      "rel_q": -4,
+      "term": "e_m4",
+      "beta": -0.006451743965552614,
+      "se": 0.0017738002137723619,
+      "p": 0.0002774500584878936
+    }
+  ],
+  "pretrend_joint_wald_stat_pinv": 2.1025153041135,
+  "pretrend_joint_df_rank": 4,
+  "pretrend_joint_p_pinv": 0.7169102946989286
+}
