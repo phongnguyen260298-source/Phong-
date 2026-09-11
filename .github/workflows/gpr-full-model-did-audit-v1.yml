@@ -1,0 +1,65 @@
+name: GPR full model DID audit v1
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/gpr-full-model-did-audit-v1.yml'
+      - 'scripts/gpr_full_model_did_audit_v1.py'
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install analysis stack
+        run: python -m pip install --upgrade pip 'pandas>=2.2,<3' 'numpy<2.3' scipy statsmodels linearmodels pyarrow openpyxl
+      - name: Download locked VCI v4.2 fundamental artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: vn-research-v42-vci-full
+          path: input/vci42
+          repository: phongnguyen260298-source/Phong-
+          run-id: 34329813990
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build exact CFO panel
+        run: python scripts/build_cfo_linkage_panel.py
+      - name: Run full model and DID audit
+        run: python scripts/gpr_full_model_did_audit_v1.py
+      - name: QA gate
+        run: |
+          python - <<'PY'
+          import json, pandas as pd
+          from pathlib import Path
+          out=Path('data/gpr_full_model_did_audit_v1')
+          qa=json.loads((out/'qa_summary.json').read_text())
+          a=json.loads((out/'assessment.json').read_text())
+          r=pd.read_csv(out/'model_did_results.csv')
+          assert qa['panel_symbols'] >= 570, qa
+          assert qa['duplicate_panel_symbol_quarter'] == 0, qa
+          assert qa['period_min'] <= '2020Q1' and qa['period_max'] >= '2025Q4', qa
+          assert qa['locked_treated_firms'] > 100 and qa['locked_control_firms'] > 100, qa
+          assert r['p'].notna().sum() >= 12, r
+          print('QA PASS')
+          print(json.dumps(a,indent=2))
+          PY
+      - name: Commit outputs
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/gpr_full_model_did_audit_v1/ || true
+          if git diff --cached --quiet; then echo 'No changes'; else git commit -m 'Add full GPR model and DID audit results'; git pull --rebase origin main; git push; fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: gpr-full-model-did-audit-v1-results
+          path: data/gpr_full_model_did_audit_v1/
+          retention-days: 30
