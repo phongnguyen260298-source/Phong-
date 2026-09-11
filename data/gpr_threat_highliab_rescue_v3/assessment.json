@@ -1,0 +1,53 @@
+{
+  "direction": "Threat x locked pre-treatment HighLiab rescue v3",
+  "primary": {
+    "spec": "PRIMARY_locked_highliab",
+    "shock": "Threat_mean",
+    "n": 7749,
+    "firms": 325,
+    "beta": 0.00016800576790687165,
+    "se": 0.0023925825878855435,
+    "p": 0.9440209133958084,
+    "r2_within": 0.005044999954963214,
+    "q_fdr_prespecified": 0.9440209133958084
+  },
+  "lead_placebo": {
+    "spec": "LEAD1_PLACEBO",
+    "shock": "Threat_lead1",
+    "n": 7429,
+    "firms": 325,
+    "beta": 0.0013162021961908746,
+    "se": 0.0018071078907193829,
+    "p": 0.46642509188979764,
+    "r2_within": 0.005596461904133099,
+    "q_fdr_prespecified": NaN
+  },
+  "qa": {
+    "panel_rows": 13867,
+    "panel_symbols": 578,
+    "exposure_symbols": 378,
+    "analysis_symbols": 325,
+    "analysis_rows": 7800,
+    "duplicate_symbol_quarter": 0,
+    "period_min": "2020Q1",
+    "period_max": "2025Q4",
+    "join_coverage_panel_to_exposure": 0.5622837370242214,
+    "locked_highliab_treated_firms": 152,
+    "locked_highliab_control_firms": 173,
+    "locked_vs_recomputed_high50_concordance": 0.9661538461538461,
+    "locked_vs_recomputed_disagreements": 11,
+    "missing": {
+      "cfo_assets": 0.006538461538461538,
+      "log_assets": 0.0,
+      "leverage": 0.0,
+      "liab_exp": 0.0,
+      "liab_exp_high": 0.0,
+      "Threat_mean": 0.0,
+      "Acts_mean": 0.0
+    },
+    "daily_threat_90pct_threshold": 208.67000000000002
+  },
+  "upgrade_gate_pass": false,
+  "decision_rule": "Upgrade only if PRIMARY locked HighLiab beta<0 and q_FDR<=0.05; lead placebo p>0.10; and at least 3/5 prespecified robustness/alternative shock specifications retain negative sign. No model may be redefined after seeing outcomes.",
+  "causal_language": "Differential association / anticipation evidence only unless stronger exogenous identification is added."
+}
