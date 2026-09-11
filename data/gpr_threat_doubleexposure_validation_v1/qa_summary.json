@@ -1,0 +1,38 @@
+{
+  "price_symbols": 578,
+  "price_start": "2020-01-02",
+  "price_end": "2025-12-31",
+  "threat_events": 15,
+  "event_dates": [
+    "2020-04-27",
+    "2024-09-14",
+    "2023-03-20",
+    "2020-11-16",
+    "2025-11-17",
+    "2020-07-21",
+    "2024-07-22",
+    "2023-10-16",
+    "2023-08-14",
+    "2024-07-01",
+    "2020-01-04",
+    "2024-10-14",
+    "2024-01-08",
+    "2024-05-26",
+    "2023-07-10"
+  ],
+  "cfo_symbols": 578,
+  "group_symbols": 578,
+  "analysis_group_classified_symbols": 578,
+  "treated_symbols": 101,
+  "control_symbols": 477,
+  "duplicate_symbol_quarter_cfo": 0,
+  "cfo_period_min": "2020Q1",
+  "cfo_period_max": "2025Q4",
+  "missing_core": {
+    "cfo_assets": 0.00951900194706858,
+    "cfo_next": 0.05112857863993654,
+    "log_assets": 7.211365111415591e-05,
+    "leverage": 7.211365111415591e-05,
+    "DoubleExposure_TopTercile": 0.0
+  }
+}

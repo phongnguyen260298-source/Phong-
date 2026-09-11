@@ -1,0 +1,46 @@
+{
+  "direction": "Threat x DoubleExposure validation v1",
+  "upgrade_gate_pass": false,
+  "focal_car5": {
+    "test": "car5",
+    "type": "event_window",
+    "n": 5847,
+    "firms": 578,
+    "quarters": 11,
+    "beta_interaction": -0.13219242681879378,
+    "se_interaction": 0.019319853475178853,
+    "p_interaction": 8.681944052568724e-12,
+    "r2_within": 0.07029963552725138,
+    "dropped_event": null,
+    "q_fdr_post_windows": 2.6045832157706172e-11
+  },
+  "pre5_placebo": {
+    "test": "pre5",
+    "type": "event_window",
+    "n": 5842,
+    "firms": 578,
+    "quarters": 11,
+    "beta_interaction": 0.12564435385318842,
+    "se_interaction": 0.05066388934544357,
+    "p_interaction": 0.01317089543220562,
+    "r2_within": 0.07566166752665193,
+    "dropped_event": null,
+    "q_fdr_post_windows": null
+  },
+  "reverse_timing_placebo": {
+    "test": "reverse_timing_car5",
+    "type": "placebo",
+    "n": 5369,
+    "firms": 578,
+    "quarters": 10,
+    "beta_interaction": -0.02177055661279967,
+    "se_interaction": 0.03310753920113386,
+    "p_interaction": 0.510845537216764,
+    "r2_within": 0.1186765245576773,
+    "dropped_event": null,
+    "q_fdr_post_windows": null
+  },
+  "loeo_all_negative": true,
+  "decision_rule": "Upgrade only if CAR5 interaction is negative with BH-FDR q<=0.05 across CAR1/CAR5/CAR20; pre5 placebo p>0.10; reverse-timing CAR5 placebo p>0.10; and every leave-one-Threat-event-out CAR5 interaction retains a negative sign.",
+  "causal_language": "Predictive/event-specific association only; do not call market reaction causal without an exogenous identification strategy."
+}
