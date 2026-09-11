@@ -1,0 +1,58 @@
+{
+  "panel_rows": 13867,
+  "panel_symbols": 578,
+  "exposure_rows": 378,
+  "exposure_symbols": 378,
+  "overlap_symbols": 325,
+  "exposure_overlap_rate": 0.8597883597883598,
+  "panel_to_exposure_coverage": 0.5622837370242214,
+  "locked_analysis_symbols": 325,
+  "duplicate_panel_symbol_quarter": 0,
+  "duplicate_locked_symbol_quarter": 0,
+  "period_min": "2020Q1",
+  "period_max": "2025Q4",
+  "locked_treated_firms": 152,
+  "locked_control_firms": 173,
+  "recon_eligible_firms": 578,
+  "recon_median_prelev": 0.4815660808012333,
+  "recon_treated_firms": 289,
+  "recon_control_firms": 289,
+  "missing_locked": {
+    "cfo_assets": 0.006538461538461538,
+    "log_assets": 0.0,
+    "leverage": 0.0,
+    "liab_exp": 0.0,
+    "liab_exp_high": 0.0,
+    "Acts_mean_z": 0.0,
+    "Threat_mean_z": 0.0
+  },
+  "acts_quarterly_p90_threshold_raw": 214.90289010989008,
+  "high_acts_quarters": [
+    "2022Q1",
+    "2022Q2",
+    "2023Q4"
+  ],
+  "selection_diagnostics_pre2022": {
+    "cfo_pre": {
+      "included_mean": 0.012144243878193978,
+      "excluded_mean": 0.01577515284088364,
+      "smd": -0.09637575765840486,
+      "n_in": 325,
+      "n_out": 253
+    },
+    "size_pre": {
+      "included_mean": 28.40947819900868,
+      "excluded_mean": 27.05644087537388,
+      "smd": 0.8023647839218669,
+      "n_in": 325,
+      "n_out": 253
+    },
+    "lev_pre": {
+      "included_mean": 0.49048828578815723,
+      "excluded_mean": 0.4605101153777213,
+      "smd": 0.13519482838179764,
+      "n_in": 325,
+      "n_out": 253
+    }
+  }
+}
