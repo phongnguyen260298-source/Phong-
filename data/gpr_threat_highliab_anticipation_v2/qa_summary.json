@@ -1,0 +1,33 @@
+{
+  "panel_rows": 13867,
+  "panel_symbols": 578,
+  "exposure_symbols": 378,
+  "analysis_symbols": 325,
+  "analysis_rows": 7800,
+  "duplicate_symbol_quarter": 0,
+  "period_min": "2020Q1",
+  "period_max": "2025Q4",
+  "join_coverage_panel_to_exposure": 0.5622837370242214,
+  "missing": {
+    "cfo_assets": 0.006538461538461538,
+    "log_assets": 0.0,
+    "leverage": 0.0,
+    "liab_exp": 0.0,
+    "Threat_mean": 0.0,
+    "Acts_mean": 0.0
+  },
+  "binary_groups": {
+    "high50": {
+      "treated_firms": 163,
+      "control_firms": 162
+    },
+    "high33": {
+      "treated_firms": 109,
+      "control_firms": 216
+    },
+    "high25": {
+      "treated_firms": 82,
+      "control_firms": 243
+    }
+  }
+}

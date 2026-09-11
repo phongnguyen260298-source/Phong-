@@ -1,0 +1,75 @@
+{
+  "direction": "Threat x HighLiab anticipation",
+  "primary": {
+    "spec": "primary_mean_continuous",
+    "shock": "Threat_mean",
+    "exposure": "liab_exp",
+    "n": 7749,
+    "firms": 325,
+    "beta": -0.00032276391532267795,
+    "se": 0.0016126139716553071,
+    "p": 0.8413691454194159,
+    "r2_within": 0.00507728927556117,
+    "q_fdr_prespecified": 0.9786914496857477
+  },
+  "lead_placebo": {
+    "spec": "lead1_placebo",
+    "shock": "Threat_mean",
+    "exposure": "liab_exp",
+    "n": 7429,
+    "firms": 325,
+    "beta": 5.0803550345896555e-05,
+    "se": 0.0015744196740176308,
+    "p": 0.974259148612207,
+    "r2_within": 0.0052293401998196876,
+    "q_fdr_prespecified": 0.9786914496857477
+  },
+  "joint_threat_given_acts": {
+    "spec": "joint_threat_acts",
+    "shock": "Threat_mean",
+    "exposure": "liab_exp",
+    "n": 7749,
+    "firms": 325,
+    "beta": 0.0017769375523856662,
+    "se": 0.0031398445544616365,
+    "p": 0.5714573813010841,
+    "r2_within": 0.005381685067400999,
+    "q_fdr_prespecified": 0.9786914496857477
+  },
+  "qa": {
+    "panel_rows": 13867,
+    "panel_symbols": 578,
+    "exposure_symbols": 378,
+    "analysis_symbols": 325,
+    "analysis_rows": 7800,
+    "duplicate_symbol_quarter": 0,
+    "period_min": "2020Q1",
+    "period_max": "2025Q4",
+    "join_coverage_panel_to_exposure": 0.5622837370242214,
+    "missing": {
+      "cfo_assets": 0.006538461538461538,
+      "log_assets": 0.0,
+      "leverage": 0.0,
+      "liab_exp": 0.0,
+      "Threat_mean": 0.0,
+      "Acts_mean": 0.0
+    },
+    "binary_groups": {
+      "high50": {
+        "treated_firms": 163,
+        "control_firms": 162
+      },
+      "high33": {
+        "treated_firms": 109,
+        "control_firms": 216
+      },
+      "high25": {
+        "treated_firms": 82,
+        "control_firms": 243
+      }
+    }
+  },
+  "decision_rule": "Upgrade only if primary sign is negative, q_FDR<=0.05, lead placebo p>0.10, and sign is stable across winsor/exclude-2022H1 plus at least one alternative aggregation. Joint Threat|Acts is supportive but not mandatory.",
+  "causal_language": "Associational/differential exposure language only unless a stronger exogenous identification strategy is added.",
+  "selection_note": "vci578_preexposure.csv is an older 378-firm pre-treatment-exposure subset; it must not be described as a 578-firm sample."
+}
