@@ -166,3 +166,5 @@ jobs:
           name: gpr-bronze-full-refresh-final
           path: data/gpr_bronze_refresh/
           retention-days: 30
+
+# manual refresh trigger: 2026-09-11 PA1/PA2 consistency audit
