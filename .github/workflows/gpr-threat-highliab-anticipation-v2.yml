@@ -1,0 +1,64 @@
+name: GPR Threat HighLiab anticipation v2
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/gpr-threat-highliab-anticipation-v2.yml'
+      - 'scripts/gpr_threat_highliab_anticipation_v2.py'
+      - 'scripts/build_cfo_linkage_panel.py'
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  anticipation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install analysis stack
+        run: python -m pip install --upgrade pip 'pandas>=2.2,<3' 'numpy<2.3' scipy statsmodels linearmodels pyarrow openpyxl
+      - name: Download locked VCI v4.2 fundamental artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: vn-research-v42-vci-full
+          path: input/vci42
+          repository: phongnguyen260298-source/Phong-
+          run-id: 34329813990
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build CFO panel from exact VCI item ids
+        run: python scripts/build_cfo_linkage_panel.py
+      - name: Run Threat HighLiab anticipation robustness battery
+        run: python scripts/gpr_threat_highliab_anticipation_v2.py
+      - name: QA gate
+        run: |
+          python - <<'PY'
+          import json, pandas as pd
+          from pathlib import Path
+          out=Path('data/gpr_threat_highliab_anticipation_v2')
+          qa=json.loads((out/'qa_summary.json').read_text())
+          r=pd.read_csv(out/'threat_highliab_results.csv')
+          assert qa['analysis_symbols'] >= 300, qa
+          assert qa['duplicate_symbol_quarter'] == 0, qa
+          assert qa['period_min'] <= '2020Q1' and qa['period_max'] >= '2025Q4', qa
+          assert qa['join_coverage_panel_to_exposure'] > 0.50, qa
+          assert r['p'].notna().sum() >= 8, r
+          print('QA PASS', qa)
+          PY
+      - name: Commit outputs
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/gpr_threat_highliab_anticipation_v2/ || true
+          if git diff --cached --quiet; then echo 'No changes'; else git commit -m 'Add Threat HighLiab anticipation v2 results'; git pull --rebase origin main; git push; fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: gpr-threat-highliab-anticipation-v2-results
+          path: data/gpr_threat_highliab_anticipation_v2/
+          retention-days: 30
