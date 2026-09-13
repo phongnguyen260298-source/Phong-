@@ -1,0 +1,97 @@
+{
+  "sample_n": 12343,
+  "sample_firms": 567,
+  "highliab_cut": 0.4721168508083521,
+  "coefficients": [
+    {
+      "term": "Threat_z_x_HL",
+      "beta": -0.01620790690969785,
+      "se": 0.004300999699229617,
+      "p": 0.00016509783432749892
+    },
+    {
+      "term": "Threat_lag1_x_HL",
+      "beta": 0.01923163207849818,
+      "se": 0.0051123383861933994,
+      "p": 0.0001695095977332084
+    },
+    {
+      "term": "Threat_lag2_x_HL",
+      "beta": -0.007971531869718097,
+      "se": 0.003363142187640359,
+      "p": 0.017791484662002865
+    },
+    {
+      "term": "Acts_z_x_HL",
+      "beta": 0.0014705460315409188,
+      "se": 0.001662746435055452,
+      "p": 0.37649417748963643
+    },
+    {
+      "term": "Acts_lag1_x_HL",
+      "beta": -0.012020647888156304,
+      "se": 0.003098886307707813,
+      "p": 0.00010544946127932775
+    },
+    {
+      "term": "Acts_lag2_x_HL",
+      "beta": 0.0074894581590467,
+      "se": 0.002836301955290294,
+      "p": 0.008287579081447172
+    }
+  ],
+  "cumulative_0_2q": {
+    "Threat": {
+      "estimate": -0.004947806700917767,
+      "se": 0.0015946172919038659,
+      "z": -3.102817664174718,
+      "p": 0.0019168770207118131
+    },
+    "Acts": {
+      "estimate": -0.003060643697568685,
+      "se": NaN,
+      "z": NaN,
+      "p": NaN
+    },
+    "Threat_minus_Acts": {
+      "estimate": -0.0018871630033490822,
+      "se": NaN,
+      "z": NaN,
+      "p": NaN
+    }
+  },
+  "persistence_lags_1_2": {
+    "Threat": {
+      "estimate": 0.011260100208780082,
+      "se": 0.0036997364460029675,
+      "z": 3.0434871167498967,
+      "p": 0.0023385345408312337
+    },
+    "Acts": {
+      "estimate": -0.004531189729109604,
+      "se": 0.0020654469446812936,
+      "z": -2.193805917299311,
+      "p": 0.028249365250894137
+    },
+    "Threat_minus_Acts": {
+      "estimate": 0.015791289937889686,
+      "se": 0.005794997355396377,
+      "z": 2.724986565038659,
+      "p": 0.006430410362638886
+    }
+  },
+  "joint_significance_lags_1_2": {
+    "Threat": {
+      "chi2": 14.251397596584624,
+      "df": 2,
+      "p": 0.000804170860508842
+    },
+    "Acts": {
+      "chi2": 15.27873102454125,
+      "df": 2,
+      "p": 0.0004811336286162984
+    }
+  },
+  "interpretation": "All six interaction terms are estimated simultaneously. Cumulative tests compare summed contemporaneous and lagged conditional associations. Persistence tests use only lag 1 and lag 2 terms. Difference tests assess whether the cumulative/persistent association differs between Threat and Acts.",
+  "caution": "With only 24 quarters, inference based on time clustering can be fragile. Treat these tests as mechanism evidence, not clean causal identification."
+}
