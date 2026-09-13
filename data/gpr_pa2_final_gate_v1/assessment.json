@@ -1,0 +1,38 @@
+{
+  "sample_firms": 567,
+  "sample_n": 13473,
+  "primary_beta": -0.005889746491737053,
+  "primary_p": 7.815970093361102e-14,
+  "primary_negative_p_lt_05": true,
+  "alternative_acts_negative_share": 1.0,
+  "alternative_acts_p_lt_10_share": 1.0,
+  "lead_placebo_clean_p_gt_10": true,
+  "lead_beta": -0.0021639380434126847,
+  "lead_p": 0.31838123401883056,
+  "leave_one_year_negative_share": 1.0,
+  "leave_one_year_p_lt_10_share": 0.8333333333333334,
+  "leave_one_quarter_negative_share": 1.0,
+  "leave_one_quarter_p_lt_10_share": 0.9583333333333334,
+  "se_all_negative": true,
+  "se_p_lt_10_share": 1.0,
+  "exclude_2022H1_beta": -0.005495484659615536,
+  "exclude_2022H1_p": 1.801982715221584e-05,
+  "did": {
+    "Post2022": {
+      "beta": -0.009722626045573425,
+      "se": 0.0027461869351449804,
+      "p": 0.00040091645166362433,
+      "n": 13473,
+      "firms": 567
+    },
+    "FakePost2021": {
+      "beta": -0.007600073119566196,
+      "se": 0.004439768424635708,
+      "p": 0.08695438631980545,
+      "n": 13473,
+      "firms": 567
+    }
+  },
+  "caution": "Post2022 DID is a broad macro-regime diagnostic, not a uniquely identified geopolitical Acts shock.",
+  "decision": "PASS_TO_THESIS_CORE"
+}
