@@ -1,0 +1,189 @@
+{
+  "baseline_robustness": [
+    {
+      "definition": "median_2017_2019",
+      "shock": "Threat_z",
+      "n": 13473,
+      "firms": 567,
+      "cut": 0.4721168508083521,
+      "beta": -0.0065111271294339915,
+      "se": 0.002628103871650693,
+      "p": 0.013243372510630458
+    },
+    {
+      "definition": "median_2017_2019",
+      "shock": "Acts_z",
+      "n": 13473,
+      "firms": 567,
+      "cut": 0.4721168508083521,
+      "beta": -0.005889746491737053,
+      "se": 0.0007872093649343036,
+      "p": 7.815970093361102e-14
+    },
+    {
+      "definition": "median_2018_2019",
+      "shock": "Threat_z",
+      "n": 13473,
+      "firms": 567,
+      "cut": 0.4721168508083521,
+      "beta": -0.0065111271294339915,
+      "se": 0.002628103871650693,
+      "p": 0.013243372510630458
+    },
+    {
+      "definition": "median_2018_2019",
+      "shock": "Acts_z",
+      "n": 13473,
+      "firms": 567,
+      "cut": 0.4721168508083521,
+      "beta": -0.005889746491737053,
+      "se": 0.0007872093649343036,
+      "p": 7.815970093361102e-14
+    },
+    {
+      "definition": "median_2019",
+      "shock": "Threat_z",
+      "n": 13473,
+      "firms": 567,
+      "cut": 0.4670369270114017,
+      "beta": -0.006682518860250735,
+      "se": 0.002382962024584845,
+      "p": 0.005050287078725013
+    },
+    {
+      "definition": "median_2019",
+      "shock": "Acts_z",
+      "n": 13473,
+      "firms": 567,
+      "cut": 0.4670369270114017,
+      "beta": -0.005912357190462975,
+      "se": 0.0015781836721731383,
+      "p": 0.00018024133278982113
+    },
+    {
+      "definition": "mean_2017_2019",
+      "shock": "Threat_z",
+      "n": 13473,
+      "firms": 567,
+      "cut": 0.4669977722640147,
+      "beta": -0.006178875595922146,
+      "se": 0.002366978821826202,
+      "p": 0.009052836592419844
+    },
+    {
+      "definition": "mean_2017_2019",
+      "shock": "Acts_z",
+      "n": 13473,
+      "firms": 567,
+      "cut": 0.4669977722640147,
+      "beta": -0.005886064928832807,
+      "se": 0.0008824464996076616,
+      "p": 2.65951705102907e-11
+    },
+    {
+      "definition": "snapshot_2019Q4",
+      "shock": "Threat_z",
+      "n": 13473,
+      "firms": 567,
+      "cut": 0.46376720363954627,
+      "beta": -0.005696474064712151,
+      "se": 0.0022931965627040083,
+      "p": 0.013001429353670657
+    },
+    {
+      "definition": "snapshot_2019Q4",
+      "shock": "Acts_z",
+      "n": 13473,
+      "firms": 567,
+      "cut": 0.46376720363954627,
+      "beta": -0.005375080822936727,
+      "se": 0.00200377927358679,
+      "p": 0.007317363393314791
+    },
+    {
+      "definition": "continuous_median_2017_2019",
+      "shock": "Threat_z",
+      "n": 13473,
+      "firms": 567,
+      "beta": -0.00395863364090795,
+      "se": 0.0012229641150532464,
+      "p": 0.0012113399185476048
+    },
+    {
+      "definition": "continuous_median_2017_2019",
+      "shock": "Acts_z",
+      "n": 13473,
+      "firms": 567,
+      "beta": -0.0031258268433273823,
+      "se": 0.0008098084519720188,
+      "p": 0.0001139601405315549
+    }
+  ],
+  "collinearity": {
+    "pairwise_correlation": {
+      "Threat_z": {
+        "Threat_z": 1.0,
+        "Threat_z_lag1": 0.7357496704869431,
+        "Threat_z_lag2": 0.599042990289416,
+        "Acts_z": 0.7410067346097682,
+        "Acts_z_lag1": 0.5207408155690616,
+        "Acts_z_lag2": 0.594016255995019
+      },
+      "Threat_z_lag1": {
+        "Threat_z": 0.7357496704869431,
+        "Threat_z_lag1": 1.0,
+        "Threat_z_lag2": 0.7079385396967715,
+        "Acts_z": 0.5209746858498446,
+        "Acts_z_lag1": 0.774549838019014,
+        "Acts_z_lag2": 0.5396461838935602
+      },
+      "Threat_z_lag2": {
+        "Threat_z": 0.599042990289416,
+        "Threat_z_lag1": 0.7079385396967715,
+        "Threat_z_lag2": 1.0,
+        "Acts_z": 0.3653834266796291,
+        "Acts_z_lag1": 0.508266754936544,
+        "Acts_z_lag2": 0.7763425870458075
+      },
+      "Acts_z": {
+        "Threat_z": 0.7410067346097682,
+        "Threat_z_lag1": 0.5209746858498446,
+        "Threat_z_lag2": 0.3653834266796291,
+        "Acts_z": 1.0,
+        "Acts_z_lag1": 0.5606638969797488,
+        "Acts_z_lag2": 0.4492296371114884
+      },
+      "Acts_z_lag1": {
+        "Threat_z": 0.5207408155690616,
+        "Threat_z_lag1": 0.774549838019014,
+        "Threat_z_lag2": 0.508266754936544,
+        "Acts_z": 0.5606638969797488,
+        "Acts_z_lag1": 1.0,
+        "Acts_z_lag2": 0.5752617322956722
+      },
+      "Acts_z_lag2": {
+        "Threat_z": 0.594016255995019,
+        "Threat_z_lag1": 0.5396461838935602,
+        "Threat_z_lag2": 0.7763425870458075,
+        "Acts_z": 0.4492296371114884,
+        "Acts_z_lag1": 0.5752617322956722,
+        "Acts_z_lag2": 1.0
+      }
+    },
+    "vif": {
+      "Threat_z": 5.114941216675022,
+      "Threat_z_lag1": 7.41127949802963,
+      "Threat_z_lag2": 4.460792282093645,
+      "Acts_z": 2.917053759877496,
+      "Acts_z_lag1": 4.509688882297723,
+      "Acts_z_lag2": 4.02225317091395
+    },
+    "condition_number": 8.267301545710907
+  },
+  "notes": [
+    "Baseline robustness changes only the pre-period definition; the 2020-2025 outcome/shock sample and model are otherwise unchanged.",
+    "High VIF or condition number in the six-term joint distributed-lag model would indicate unstable individual lag coefficients and sign reversals should not be over-interpreted.",
+    "Separate distributed-lag models are reported to distinguish genuine timing patterns from multicollinearity induced by jointly entering Threat and Acts lags.",
+    "No specification is selected based on p-values."
+  ]
+}
