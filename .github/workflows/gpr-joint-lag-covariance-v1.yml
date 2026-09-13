@@ -1,0 +1,38 @@
+name: GPR joint lag covariance v1
+on:
+  push:
+    paths:
+      - '.github/workflows/gpr-joint-lag-covariance-v1.yml'
+      - 'scripts/gpr_joint_lag_covariance_v1.py'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          name: gpr-bronze-refresh-raw
+          path: data/gpr_bronze_refresh
+          repository: phongnguyen260298-source/Phong-
+          run-id: 34582712489
+          github-token: ${{ github.token }}
+      - run: python -m pip install 'pandas>=2.2,<3' 'numpy<2.3' pyarrow scipy linearmodels statsmodels
+      - shell: bash
+        run: |
+          mkdir -p data/gpr_bronze_refresh/fundamental_shards
+          find data/gpr_bronze_refresh -name 'fundamental_shard_*.parquet' -exec cp -n {} data/gpr_bronze_refresh/fundamental_shards/ \;
+          test "$(find data/gpr_bronze_refresh/fundamental_shards -name 'fundamental_shard_*.parquet' | wc -l)" -eq 4
+      - run: python scripts/gpr_joint_lag_covariance_v1.py
+      - run: cat data/gpr_joint_lag_covariance_v1/assessment.json
+      - run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/gpr_joint_lag_covariance_v1
+          if ! git diff --cached --quiet; then git commit -m 'Add joint lag covariance robustness'; git pull --rebase origin main; git push; fi
