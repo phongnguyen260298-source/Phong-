@@ -1,0 +1,50 @@
+{
+  "sample_n": 13473,
+  "sample_firms": 567,
+  "highliab_cut": 0.4721168508083521,
+  "joint_model": {
+    "Threat_beta": -0.00487088516516877,
+    "Threat_se": 0.005274190370356687,
+    "Threat_p": 0.3557471774519094,
+    "Acts_beta": -0.002129544328041889,
+    "Acts_se": 0.003702571245719332,
+    "Acts_p": 0.5651979889522702,
+    "Threat_minus_Acts": -0.0027413408371268814,
+    "difference_se": 0.00891913821304156,
+    "difference_z": -0.3073549004004102,
+    "difference_p": 0.7585732520765861,
+    "equal_coefficients_rejected_5pct": false
+  },
+  "outcome_distribution": {
+    "overall_mean": 0.012667694844650046,
+    "overall_sd": 0.14959075680960196,
+    "highliab_mean": 0.007914933459499585,
+    "highliab_sd": 0.11581796122815732
+  },
+  "economic_significance": [
+    {
+      "shock": "Threat",
+      "beta_per_1sd_shock": -0.00487088516516877,
+      "percentage_point_change_ocfa": -0.487088516516877,
+      "beta_as_share_of_overall_mean": -0.3845123540551574,
+      "beta_as_pct_of_overall_mean": -38.45123540551574,
+      "beta_in_overall_outcome_sd": -0.03256140465529162,
+      "beta_as_share_of_highliab_mean": -0.6154044364482538,
+      "beta_as_pct_of_highliab_mean": -61.54044364482538,
+      "beta_in_highliab_outcome_sd": -0.04205638843506576
+    },
+    {
+      "shock": "Acts",
+      "beta_per_1sd_shock": -0.002129544328041889,
+      "percentage_point_change_ocfa": -0.21295443280418888,
+      "beta_as_share_of_overall_mean": -0.1681082749590594,
+      "beta_as_pct_of_overall_mean": -16.81082749590594,
+      "beta_in_overall_outcome_sd": -0.014235801552580937,
+      "beta_as_share_of_highliab_mean": -0.2690539773882733,
+      "beta_as_pct_of_highliab_mean": -26.90539773882733,
+      "beta_in_highliab_outcome_sd": -0.01838699546650421
+    }
+  ],
+  "interpretation_rule": "Threat and Acts are standardized. Each interaction beta is the differential change in OCFA for HighLiab firms relative to other firms associated with a one-standard-deviation increase in the corresponding geopolitical-risk component, conditional on firm FE, quarter FE, size, and leverage.",
+  "caution": "A statistically significant difference test compares the two conditional association coefficients. It does not by itself establish a causal difference between Threat and Acts."
+}
