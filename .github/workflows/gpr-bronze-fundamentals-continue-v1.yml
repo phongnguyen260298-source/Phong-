@@ -1,0 +1,130 @@
+name: GPR Bronze fundamentals continue v1
+
+on:
+  push:
+    paths:
+      - '.github/workflows/gpr-bronze-fundamentals-continue-v1.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  continue-analysis:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download completed refreshed fundamentals artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: gpr-bronze-refresh-raw
+          path: data/gpr_bronze_refresh
+          repository: phongnguyen260298-source/Phong-
+          run-id: 34582712489
+          github-token: ${{ github.token }}
+
+      - name: Download locked baseline artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: vn-research-v42-vci-full
+          path: input/vci42
+          repository: phongnguyen260298-source/Phong-
+          run-id: 34329813990
+          github-token: ${{ github.token }}
+
+      - name: Install validation stack
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install 'pandas>=2.2,<3' 'numpy<2.3' pyarrow scipy linearmodels statsmodels
+
+      - name: Locate downloaded fundamental shards
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo 'Downloaded tree:'
+          find data/gpr_bronze_refresh -maxdepth 3 -type f | sort | head -100
+          COUNT=$(find data/gpr_bronze_refresh -name 'fundamental_shard_*.parquet' | wc -l)
+          echo "fundamental parquet count=$COUNT"
+          test "$COUNT" -eq 4
+          # Normalize artifact layout if download-artifact nested the files differently.
+          mkdir -p data/gpr_bronze_refresh/fundamental_shards
+          while IFS= read -r f; do
+            parent=$(dirname "$f")
+            if [ "$parent" != "data/gpr_bronze_refresh/fundamental_shards" ]; then
+              cp "$f" data/gpr_bronze_refresh/fundamental_shards/
+            fi
+          done < <(find data/gpr_bronze_refresh -name 'fundamental_shard_*.parquet')
+          while IFS= read -r f; do
+            parent=$(dirname "$f")
+            if [ "$parent" != "data/gpr_bronze_refresh/fundamental_shards" ]; then
+              cp "$f" data/gpr_bronze_refresh/fundamental_shards/
+            fi
+          done < <(find data/gpr_bronze_refresh -name 'coverage_shard_*.csv')
+          while IFS= read -r f; do
+            parent=$(dirname "$f")
+            if [ "$parent" != "data/gpr_bronze_refresh/fundamental_shards" ]; then
+              cp "$f" data/gpr_bronze_refresh/fundamental_shards/
+            fi
+          done < <(find data/gpr_bronze_refresh -name 'errors_shard_*.csv')
+
+      - name: Verify fundamental shards
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import pandas as pd
+          p=Path('data/gpr_bronze_refresh/fundamental_shards')
+          pq=sorted(p.glob('fundamental_shard_*.parquet'))
+          covf=sorted(p.glob('coverage_shard_*.csv'))
+          errf=sorted(p.glob('errors_shard_*.csv'))
+          if len(pq)!=4 or len(covf)!=4 or len(errf)!=4:
+              raise RuntimeError(f'Incomplete shards parquet={len(pq)} coverage={len(covf)} errors={len(errf)}')
+          cov=pd.concat([pd.read_csv(f) for f in covf],ignore_index=True)
+          err=pd.concat([pd.read_csv(f) for f in errf],ignore_index=True)
+          rows=sum(len(pd.read_parquet(f)) for f in pq)
+          print('fundamental firms=',cov.symbol.nunique(),'rows=',rows,'errors=',len(err))
+          print(err.to_string(index=False) if len(err) else 'no API errors')
+          if cov.symbol.nunique() < 550:
+              raise RuntimeError('Fundamental coverage below 550 firms')
+          PY
+
+      - name: Run refreshed PA1 PA2 DID validation
+        run: python scripts/gpr_bronze_refresh_compare_v1.py
+
+      - name: Show PA1 PA2 DID results
+        run: |
+          python - <<'PY'
+          import pandas as pd
+          p='data/gpr_bronze_refresh/final/model_results_with_did.csv'
+          d=pd.read_csv(p)
+          x=d[d['group'].eq('HighLiab_TopTercile') & d['shock'].isin(['Threat','Acts','Post2022'])]
+          print(x.to_string(index=False))
+          PY
+
+      - name: Commit refreshed validation outputs
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/gpr_bronze_refresh/final
+          if git diff --cached --quiet; then
+            echo 'No output changes'
+          else
+            git commit -m 'Validate refreshed VCI fundamentals for PA1 PA2 DID'
+            git pull --rebase origin main
+            git push
+          fi
+
+      - name: Upload continuation outputs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gpr-bronze-fundamentals-continue-v1
+          path: data/gpr_bronze_refresh/final/
+          retention-days: 30
