@@ -1,0 +1,32 @@
+{
+  "method": "Restricted wild cluster bootstrap-t; Rademacher quarter-level weights; H0 sets the interaction coefficient to zero. Firm FE, quarter FE, size and leverage retained.",
+  "results": [
+    {
+      "shock": "Threat_z",
+      "n": 13473,
+      "firms": 567,
+      "quarters": 24,
+      "beta": -0.0065111271294339915,
+      "cluster_time_se": 0.0026687210357940055,
+      "t_obs": -2.4397930851910052,
+      "B_requested": 999,
+      "B_success": 999,
+      "failures": 0,
+      "wild_cluster_p_two_sided": 0.067
+    },
+    {
+      "shock": "Acts_z",
+      "n": 13473,
+      "firms": 567,
+      "quarters": 24,
+      "beta": -0.005889746491737056,
+      "cluster_time_se": 0.0014509790394185709,
+      "t_obs": -4.059153393488831,
+      "B_requested": 999,
+      "B_success": 999,
+      "failures": 0,
+      "wild_cluster_p_two_sided": 0.003
+    }
+  ],
+  "decision_rule": "Robust at 5% if wild-cluster p < 0.05; supportive at 10% if p < 0.10. This is an inference robustness test, not causal identification."
+}
