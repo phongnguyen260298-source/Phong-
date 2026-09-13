@@ -1,0 +1,39 @@
+{
+  "sample_n": 12343,
+  "sample_firms": 567,
+  "results": [
+    {
+      "covariance": "twoway",
+      "lag_sum_difference_Threat_minus_Acts": 0.015791289937889686,
+      "se": 0.005794997355396377,
+      "z": 2.724986565038659,
+      "p": 0.006430410362638886,
+      "significant_5pct": true
+    },
+    {
+      "covariance": "entity",
+      "lag_sum_difference_Threat_minus_Acts": 0.015791289937889686,
+      "se": 0.008202342525430706,
+      "z": 1.9252170814532625,
+      "p": 0.0542022059950975,
+      "significant_5pct": false
+    },
+    {
+      "covariance": "dk",
+      "lag_sum_difference_Threat_minus_Acts": 0.015791289937889686,
+      "se": 0.006052620037620709,
+      "z": 2.609000703784019,
+      "p": 0.009080705559243488,
+      "significant_5pct": true
+    },
+    {
+      "covariance": "robust",
+      "lag_sum_difference_Threat_minus_Acts": 0.015791289937889686,
+      "se": 0.00818562138183125,
+      "z": 1.9291498105372828,
+      "p": 0.053712266812436606,
+      "significant_5pct": false
+    }
+  ],
+  "interpretation": "Positive difference means the net lagged association (lags 1+2) is more positive/less negative for Threat than Acts. The test is about lag structure, not causal effect size."
+}
