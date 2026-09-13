@@ -1,0 +1,83 @@
+name: GPR joint Threat Acts and economic significance v1
+
+on:
+  push:
+    paths:
+      - '.github/workflows/gpr-joint-econsig-v1.yml'
+      - 'scripts/gpr_joint_econsig_v1.py'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  joint-econsig:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download refreshed fundamentals artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: gpr-bronze-refresh-raw
+          path: data/gpr_bronze_refresh
+          repository: phongnguyen260298-source/Phong-
+          run-id: 34582712489
+          github-token: ${{ github.token }}
+
+      - name: Install analysis stack
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install 'pandas>=2.2,<3' 'numpy<2.3' pyarrow scipy linearmodels statsmodels
+
+      - name: Normalize fundamental artifact layout
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p data/gpr_bronze_refresh/fundamental_shards
+          while IFS= read -r f; do
+            parent=$(dirname "$f")
+            if [ "$parent" != "data/gpr_bronze_refresh/fundamental_shards" ]; then
+              cp "$f" data/gpr_bronze_refresh/fundamental_shards/
+            fi
+          done < <(find data/gpr_bronze_refresh -name 'fundamental_shard_*.parquet')
+          COUNT=$(find data/gpr_bronze_refresh/fundamental_shards -name 'fundamental_shard_*.parquet' | wc -l)
+          echo "fundamental parquet count=$COUNT"
+          test "$COUNT" -eq 4
+
+      - name: Run joint model and economic significance
+        run: python scripts/gpr_joint_econsig_v1.py
+
+      - name: Show results
+        run: |
+          cat data/gpr_joint_econsig_v1/assessment.json
+          echo '--- joint model ---'
+          cat data/gpr_joint_econsig_v1/joint_model_results.csv
+          echo '--- economic significance ---'
+          cat data/gpr_joint_econsig_v1/economic_significance.csv
+
+      - name: Commit outputs
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/gpr_joint_econsig_v1
+          if git diff --cached --quiet; then
+            echo 'No output changes'
+          else
+            git commit -m 'Add joint Threat Acts and economic significance results'
+            git pull --rebase origin main
+            git push
+          fi
+
+      - name: Upload outputs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gpr-joint-econsig-v1
+          path: data/gpr_joint_econsig_v1/
+          retention-days: 30
