@@ -1,0 +1,62 @@
+name: GPR OCF supervisor controls v1
+on:
+  push:
+    paths:
+      - 'scripts/gpr_ocf_supervisor_controls_v1.py'
+      - '.github/workflows/gpr-ocf-supervisor-controls-v1.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+env:
+  VNSTOCK_API_KEY: ${{ secrets.VNSTOCK_API_KEY }}
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download locked VCI baseline
+        uses: actions/download-artifact@v4
+        with:
+          name: vn-research-v42-vci-full
+          path: input/vci42
+          repository: phongnguyen260298-source/Phong-
+          run-id: 34329813990
+          github-token: ${{ github.token }}
+      - name: Install authenticated VNStock Bronze
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$VNSTOCK_API_KEY"
+          VENV="$RUNNER_TEMP/vnstock-venv"
+          python -m pip install --upgrade pip requests setuptools wheel
+          wget -q https://vnstocks.com/files/vnstock-cli-installer.run -O installer.run
+          chmod +x installer.run
+          ./installer.run -- --non-interactive --api-key "$VNSTOCK_API_KEY" --venv-path "$VENV" --language en
+          "$VENV/bin/python" -m ensurepip --upgrade
+          "$VENV/bin/python" -m pip install 'pandas>=2.2,<3' 'numpy<2.3' pyarrow scipy statsmodels linearmodels
+      - name: Restore locked official GPR outputs
+        uses: actions/download-artifact@v4
+        with:
+          name: gpr-gate-b-v2
+          path: data/gpr_locked
+          repository: phongnguyen260298-source/Phong-
+          run-id: 34926391410
+          github-token: ${{ github.token }}
+        continue-on-error: true
+      - name: Fetch controls and run M1-M4
+        shell: bash
+        run: |
+          set -euo pipefail
+          VENV="$RUNNER_TEMP/vnstock-venv"
+          REQUEST_PAUSE=0.45 "$VENV/bin/python" scripts/gpr_ocf_supervisor_controls_v1.py
+      - name: Upload supervisor revision outputs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gpr-ocf-supervisor-controls-v1
+          path: data/gpr_ocf_supervisor_controls/
+          retention-days: 30
