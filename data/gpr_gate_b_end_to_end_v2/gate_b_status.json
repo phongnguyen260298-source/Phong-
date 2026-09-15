@@ -1,0 +1,101 @@
+{
+  "gate": "B",
+  "status": "PASS",
+  "raw_financial_source": "GitHub Actions artifact gpr-bronze-refresh-raw from run 34582712489",
+  "raw_financial_sha256": {
+    "fundamental_shard_0.parquet": "d62be210a6d68aca73104b77751879faece09aed452d63a79159f2b0a0e4b51c",
+    "fundamental_shard_1.parquet": "69da5f502c13ac13c236223454e01632ef50b7ec6d4f2a9422723db9022d02e7",
+    "fundamental_shard_2.parquet": "259e3e9b5e7480810c338d658b7aa885ee88aee34933f30dcbc925cce9f68929",
+    "fundamental_shard_3.parquet": "d7a990fcd2a9c5441e7b7fa33e21fb759203bac5cb08e65f52c2f0130cfd1448"
+  },
+  "gpr_source": "locked GPR raw snapshot from gpr-repro-pack-v1 artifact, workflow run 34766446325",
+  "gpr_snapshot_file": "data/gpr_repro_lock/gpr_raw_daily_2020_2025.csv",
+  "gpr_snapshot_sha256": "8d895b82528785e6d9638a5959359f16988d59fda13adc653390e1939046df39",
+  "pipeline_scope": "locked raw financial shards + locked raw GPR -> variables -> HighLiab -> panel -> FE -> WCB 999 -> comparison",
+  "resolved_item_ids": {
+    "assets": "BS_TOTAL_ASSETS",
+    "liabilities": "BS_TOTAL_LIABILITIES",
+    "current_liab": "BS_SHORT_TERM_LIABILITIES",
+    "cfo": "CF_NET_CASH_FLOWS_FROM_OPERATING_ACTIVITIES"
+  },
+  "expected": {
+    "n": 13473,
+    "firms": 567,
+    "quarters": 24,
+    "hl67_cut": 0.4721168508083521,
+    "Threat_z": {
+      "beta": -0.0065111271294339915,
+      "twoway_se": 0.002628103871650693,
+      "twoway_p": 0.013243372510630458,
+      "wcb_p": 0.067
+    },
+    "Acts_z": {
+      "beta": -0.005889746491737053,
+      "twoway_se": 0.0007872093649343036,
+      "twoway_p": 7.815970093361102e-14,
+      "wcb_p": 0.003
+    }
+  },
+  "results": [
+    {
+      "shock": "Threat_z",
+      "n": 13473,
+      "firms": 567,
+      "quarters": 24,
+      "hl67_cut": 0.4721168508083521,
+      "beta": -0.0065111271294339915,
+      "twoway_se": 0.0026281038716506914,
+      "twoway_p": 0.013243372510630458,
+      "cluster_time_se": 0.0026687210357940055,
+      "t_obs": -2.4397930851910052,
+      "B_requested": 999,
+      "B_success": 999,
+      "failures": 0,
+      "wcb_p": 0.067,
+      "delta_beta": 0.0,
+      "delta_twoway_se": -1.734723475976807e-18,
+      "delta_twoway_p": 0.0,
+      "delta_wcb_p": 0.0,
+      "pass_n": true,
+      "pass_firms": true,
+      "pass_quarters": true,
+      "pass_cut": true,
+      "pass_beta": true,
+      "pass_twoway_se": true,
+      "pass_twoway_p": true,
+      "pass_wcb_p": true,
+      "pass_wcb_complete": true,
+      "gate_b_row_pass": true
+    },
+    {
+      "shock": "Acts_z",
+      "n": 13473,
+      "firms": 567,
+      "quarters": 24,
+      "hl67_cut": 0.4721168508083521,
+      "beta": -0.005889746491737056,
+      "twoway_se": 0.0007872093649343041,
+      "twoway_p": 7.815970093361102e-14,
+      "cluster_time_se": 0.0014509790394185709,
+      "t_obs": -4.059153393488831,
+      "B_requested": 999,
+      "B_success": 999,
+      "failures": 0,
+      "wcb_p": 0.003,
+      "delta_beta": -2.6020852139652106e-18,
+      "delta_twoway_se": 5.421010862427522e-19,
+      "delta_twoway_p": 0.0,
+      "delta_wcb_p": 0.0,
+      "pass_n": true,
+      "pass_firms": true,
+      "pass_quarters": true,
+      "pass_cut": true,
+      "pass_beta": true,
+      "pass_twoway_se": true,
+      "pass_twoway_p": true,
+      "pass_wcb_p": true,
+      "pass_wcb_complete": true,
+      "gate_b_row_pass": true
+    }
+  ]
+}
