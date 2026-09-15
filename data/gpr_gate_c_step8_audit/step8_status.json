@@ -1,0 +1,38 @@
+{
+  "gate": "C",
+  "step": 8,
+  "status": "PASS",
+  "scope": "Audit supplemental quantitative claims and robustness statements in the current thesis Word draft against locked GitHub outputs.",
+  "checked_sources": {
+    "main_and_wcb": "data/gpr_gate_b_end_to_end_v2/gate_b_status.json",
+    "threat_robustness": "data/gpr_pa1_final_gate_v1 plus data/gpr_pa1_exclude_2022h1_v1",
+    "acts_robustness": "data/gpr_pa2_final_gate_v1",
+    "joint_equality": "data/gpr_joint_econsig_v1/assessment.json",
+    "covariance_sensitivity": "data/gpr_full_specification_audit_v1/primary_covariance_sensitivity.csv",
+    "collinearity": "data/gpr_full_specification_audit_v1/assessment.json",
+    "distributed_lags": "data/gpr_full_specification_audit_v1/distributed_lag_models.csv"
+  },
+  "verified_word_tables": {
+    "main_results": "PASS",
+    "threat_robustness": "PASS",
+    "acts_robustness": "PASS",
+    "final_lock": "PASS"
+  },
+  "verified_key_values": {
+    "Threat_beta": -0.0065111271294339915,
+    "Threat_WCB_p": 0.067,
+    "Acts_beta": -0.005889746491737056,
+    "Acts_WCB_p": 0.003,
+    "equality_test_p": 0.7585732520765861,
+    "Threat_Acts_corr": 0.7410067346097682,
+    "max_VIF_joint_lag": 7.41127949802963,
+    "condition_number_joint_lag": 8.267301545710907
+  },
+  "editorial_items_for_step12": [
+    "The Word draft still says the joint/distributed-lag table is not fully locked; GitHub now contains a locked distributed_lag_models.csv, so this wording is stale and should be updated conservatively.",
+    "The appendix still describes reproducibility as starting from the processed panel; Gate B v2 now demonstrates locked raw financial shards plus locked raw GPR snapshot through panel, FE, and WCB, so the appendix must be updated.",
+    "The appendix still says CFO quarter-vs-cumulative and outlier source audits are incomplete; Gate A/source reconciliation and outlier audits have since resolved those issues and the wording must be updated.",
+    "Some Acts leave-one-out rows have missing SE/p in legacy outputs; the thesis does not report those missing p-values, so only sign-stability claims should be retained unless those rows are rerun."
+  ],
+  "decision": "STEP_8_PASS_PROCEED_TO_STEP_9"
+}
