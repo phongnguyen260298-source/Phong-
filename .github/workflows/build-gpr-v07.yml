@@ -29,4 +29,5 @@ jobs:
           path: |
             output/GPR_OCF_2026-09-16_v07.xlsx
             output/GPR_OCF_2026-09-16_v07_QA.json
+            scripts/GPR_OCF_2026-09-16_v07_reproduce.py
           if-no-files-found: error
