@@ -14,6 +14,7 @@ def replace_text(s):
  if not isinstance(s,str): return s
  reps={'WCB locked v04':'WCB verified v06','WCB v04 lock':'WCB verified v06','WCB lock v04':'WCB verified v06','locked WCB v04':'verified WCB v06'}
  for a,b in reps.items(): s=re.sub(re.escape(a),b,s,flags=re.I)
+ if 'wcb' in s.lower(): s=s.replace('0.0308','0.0293').replace('0,0308','0,0293').replace('0.0023','0.0018').replace('0,0023','0,0018')
  return s
 for ws in wb.worksheets:
  if ws.title=='24_QA_V04': continue
@@ -26,7 +27,7 @@ for key,val in [('H1_WCB',.0293),('H2_WCB',.0018)]:
  for r in rows:
   for c in ws[r]:
    if isinstance(c.value,(int,float)) and abs(float(c.value)-(.0308 if key=='H1_WCB' else .0023))<1e-9: c.value=val
-   elif isinstance(c.value,str): c.value=c.value.replace('0.0308','0.0293').replace('0,0308','0,0293').replace('0.0023','0.0018').replace('0,0023','0,0018')
+   elif isinstance(c.value,str): c.value=replace_text(c.value)
 ws=wb['14_NUMBER_MAP']
 for row in ws.iter_rows():
  txt=' | '.join(str(c.value) for c in row if c.value is not None).lower()
@@ -35,7 +36,7 @@ for row in ws.iter_rows():
    if isinstance(c.value,(int,float)):
     if abs(float(c.value)-.0308)<1e-9: c.value=.0293
     elif abs(float(c.value)-.0023)<1e-9: c.value=.0018
-   elif isinstance(c.value,str): c.value=replace_text(c.value.replace('0.0308','0.0293').replace('0,0308','0,0293').replace('0.0023','0.0018').replace('0,0023','0,0018'))
+   elif isinstance(c.value,str): c.value=replace_text(c.value)
 ws=wb['10_ROBUSTNESS_LOCK']
 for label,fallback in [('Lead 1',11),('Lag 1',12),('Lag 2',13),('Exclude 2022Q1-Q2',14)]:
  rows=find_rows(ws,label); r=rows[0] if rows else fallback; df,pt,pa=DYN[label]; ws.cell(r,7).value=pt; ws.cell(r,10).value=pa
