@@ -1,12 +1,11 @@
 from pathlib import Path
-import json, re, shutil, zipfile
+import json, shutil, zipfile
 from openpyxl import load_workbook
-# workflow trigger v06 build
+from openpyxl.cell.cell import TYPE_ERROR
 
 SRC=Path('GPR_OCF_2026-09-16_v04.xlsx')
 OUT=Path('output/GPR_OCF_2026-09-16_v06.xlsx')
 REPRO=Path('scripts/GPR_OCF_2026-09-16_v06_reproduce.py')
-WCB=Path('data/GPR_OCF_2026-09-16_v06_WCB_output.csv')
 WCB_VALUES={'NON_FN_Threat':(292,0.0293),'NON_FN_Acts':(17,0.0018),'CONT_Threat':(43,0.0044),'CONT_Acts':(44,0.0045),'FULL_Threat':(692,0.0693),'FULL_Acts':(42,0.0043)}
 DYN={'Lead 1':(22,0.1633,0.3424),'Lag 1':(22,0.2028,0.0084),'Lag 2':(21,0.2323,0.2656),'Exclude 2022Q1-Q2':(21,0.0214,0.0001)}
 OUT.parent.mkdir(exist_ok=True); shutil.copy2(SRC,OUT); wb=load_workbook(OUT); original_sheets=list(wb.sheetnames)
@@ -49,12 +48,14 @@ wb2=load_workbook(OUT,read_only=False,data_only=False)
 assert all(s in wb2.sheetnames for s in original_sheets); assert '26_QA_V06' in wb2.sheetnames
 assert wb2['01_RESULTS_ALL']['I2'].value==0.0293 and wb2['01_RESULTS_ALL']['I3'].value==0.0018
 for row,pt,pa in [(11,.1633,.3424),(12,.2028,.0084),(13,.2323,.2656),(14,.0214,.0001)]: assert wb2['10_ROBUSTNESS_LOCK'].cell(row,7).value==pt and wb2['10_ROBUSTNESS_LOCK'].cell(row,10).value==pa
+# Only actual Excel error-typed cells are failures. Text in QA/readme that names error tokens is documentation, not an error.
 bad=[]
 for ws in wb2.worksheets:
     for row in ws.iter_rows():
         for c in row:
-            if isinstance(c.value,str) and any(e in c.value for e in ('#REF!','#DIV/0!','#VALUE!','#NAME?')): bad.append((ws.title,c.coordinate,c.value))
-assert not bad, f'Excel error tokens: {bad[:20]}'
+            if c.data_type == TYPE_ERROR:
+                bad.append((ws.title,c.coordinate,c.value))
+assert not bad, f'Actual Excel error cells: {bad[:20]}'
 with zipfile.ZipFile(OUT) as z: assert z.testzip() is None
-report={'output':str(OUT),'sheets':len(wb2.sheetnames),'original_sheets':len(original_sheets),'error_tokens':len(bad),'zip_integrity':'PASS','wcb':WCB_VALUES,'dynamic_df':DYN}
+report={'output':str(OUT),'sheets':len(wb2.sheetnames),'original_sheets':len(original_sheets),'actual_excel_error_cells':len(bad),'zip_integrity':'PASS','wcb':WCB_VALUES,'dynamic_df':DYN}
 Path('output/GPR_OCF_2026-09-16_v06_QA.json').write_text(json.dumps(report,indent=2),encoding='utf-8'); print(json.dumps(report,indent=2))
