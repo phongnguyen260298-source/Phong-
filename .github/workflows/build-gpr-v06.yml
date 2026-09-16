@@ -1,0 +1,31 @@
+name: Build GPR OCF v06
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'GPR_OCF_2026-09-16_v04.xlsx'
+      - 'scripts/build_gpr_ocf_v06.py'
+      - 'scripts/GPR_OCF_2026-09-16_v06_reproduce.py'
+      - 'data/GPR_OCF_2026-09-16_v06_WCB_output.csv'
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install workbook dependency
+        run: pip install openpyxl
+      - name: Build and QA v06 workbook
+        run: python scripts/build_gpr_ocf_v06.py
+      - name: Upload v06 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: GPR_OCF_2026-09-16_v06
+          path: |
+            output/GPR_OCF_2026-09-16_v06.xlsx
+            output/GPR_OCF_2026-09-16_v06_QA.json
+          if-no-files-found: error
