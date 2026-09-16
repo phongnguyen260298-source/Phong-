@@ -3,6 +3,7 @@ on:
   workflow_dispatch:
   push:
     paths:
+      - '.github/workflows/build-gpr-v07.yml'
       - 'scripts/build_gpr_ocf_v07.py'
       - 'scripts/GPR_OCF_2026-09-16_v07_reproduce.py'
 jobs:
