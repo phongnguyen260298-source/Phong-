@@ -19,7 +19,7 @@ def main():
   with contextlib.redirect_stdout(io.StringIO()),contextlib.redirect_stderr(io.StringIO()):vnstock.login(KEY)
   meta['tier']=vnstock.status().get('tier','unknown')
  except Exception as e:
-  meta.update(status='blocked',reason='authentication_failed',exception_type=type(e).__name__);save('summary.json',meta);return 2
+  meta.update(status='blocked',reason=str(e).replace(KEY,'[REDACTED]')[:350],error_code=str(getattr(e,'code','unknown')),exception_type=type(e).__name__);save('summary.json',meta);return 2
  if meta['tier']=='guest':
   meta.update(status='blocked',reason='Community authentication was not established');save('summary.json',meta);return 2
  symbols=pd.read_csv('data/gpr_revenue_symbols.csv').symbol.tolist()
